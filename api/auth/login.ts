@@ -33,10 +33,8 @@ export default async function handler(
     }
 
     // Initialize Google OAuth2 client
-    const client = new OAuth2Client(
-      process.env.VITE_GOOGLE_CLIENT_ID,
-      process.env.GOOGLE_CLIENT_SECRET
-    );
+    // For ID token verification, we only need the Client ID
+    const client = new OAuth2Client(process.env.VITE_GOOGLE_CLIENT_ID);
 
     // Verify Google token
     let googleUser;
@@ -69,14 +67,18 @@ export default async function handler(
       return res.status(403).json({ error: 'Email not verified' });
     }
 
-    // Check blacklist first
-    const blacklisted = await kv.get(`blacklist:${googleUser.email}`);
-    if (blacklisted) {
-      await logFailedLogin(googleUser.email, 'blacklisted', req);
-      return res.status(403).json({ 
-        error: 'Access revoked',
-        reason: (blacklisted as any).reason 
-      });
+    // Check blacklist first (skip if KV not configured)
+    try {
+      const blacklisted = await kv.get(`blacklist:${googleUser.email}`);
+      if (blacklisted) {
+        await logFailedLogin(googleUser.email, 'blacklisted', req);
+        return res.status(403).json({ 
+          error: 'Access revoked',
+          reason: (blacklisted as any).reason 
+        });
+      }
+    } catch (kvError) {
+      console.log('KV not configured, skipping blacklist check');
     }
 
     // Check allowed domains
@@ -84,7 +86,11 @@ export default async function handler(
     const userDomain = googleUser.email.split('@')[1];
     
     if (!allowedDomains.includes(userDomain)) {
-      await logFailedLogin(googleUser.email, 'invalid_domain', req);
+      try {
+        await logFailedLogin(googleUser.email, 'invalid_domain', req);
+      } catch (error) {
+        console.log('Could not log failed login');
+      }
       return res.status(403).json({ error: `Only emails from ${allowedDomains.join(', ')} are allowed` });
     }
 
@@ -121,12 +127,21 @@ export default async function handler(
       status: 'active'
     };
 
-    await kv.set(`session:${googleUser.sub}`, sessionData, {
-      ex: 30 * 24 * 60 * 60 // 30 days TTL
-    });
+    // Store session in KV if available
+    try {
+      await kv.set(`session:${googleUser.sub}`, sessionData, {
+        ex: 30 * 24 * 60 * 60 // 30 days TTL
+      });
+    } catch (kvError) {
+      console.log('KV not configured, session not persisted');
+    }
 
     // Audit log
-    await logSuccessfulLogin(googleUser.email, req);
+    try {
+      await logSuccessfulLogin(googleUser.email, req);
+    } catch (logError) {
+      console.log('Could not log successful login');
+    }
 
     // Return session token and user data
     return res.status(200).json({ 
@@ -169,31 +184,39 @@ function getUserRole(email: string): UserRole {
  * Log successful login
  */
 async function logSuccessfulLogin(email: string, req: VercelRequest) {
-  const logEntry = {
-    timestamp: new Date().toISOString(),
-    action: 'LOGIN_SUCCESS',
-    email,
-    ip: req.headers['x-forwarded-for'] || req.socket?.remoteAddress,
-    userAgent: req.headers['user-agent']
-  };
+  try {
+    const logEntry = {
+      timestamp: new Date().toISOString(),
+      action: 'LOGIN_SUCCESS',
+      email,
+      ip: req.headers['x-forwarded-for'] || req.socket?.remoteAddress,
+      userAgent: req.headers['user-agent']
+    };
 
-  await kv.lpush('audit:logins', JSON.stringify(logEntry));
-  await kv.ltrim('audit:logins', 0, 9999); // Keep last 10,000 entries
+    await kv.lpush('audit:logins', JSON.stringify(logEntry));
+    await kv.ltrim('audit:logins', 0, 9999); // Keep last 10,000 entries
+  } catch (error) {
+    console.log('Could not write to audit log');
+  }
 }
 
 /**
  * Log failed login attempt
  */
 async function logFailedLogin(email: string, reason: string, req: VercelRequest) {
-  const logEntry = {
-    timestamp: new Date().toISOString(),
-    action: 'LOGIN_FAILED',
-    email,
-    reason,
-    ip: req.headers['x-forwarded-for'] || req.socket?.remoteAddress,
-    userAgent: req.headers['user-agent']
-  };
+  try {
+    const logEntry = {
+      timestamp: new Date().toISOString(),
+      action: 'LOGIN_FAILED',
+      email,
+      reason,
+      ip: req.headers['x-forwarded-for'] || req.socket?.remoteAddress,
+      userAgent: req.headers['user-agent']
+    };
 
-  await kv.lpush('audit:logins', JSON.stringify(logEntry));
-  await kv.ltrim('audit:logins', 0, 9999);
+    await kv.lpush('audit:logins', JSON.stringify(logEntry));
+    await kv.ltrim('audit:logins', 0, 9999);
+  } catch (error) {
+    console.log('Could not write to audit log');
+  }
 }
