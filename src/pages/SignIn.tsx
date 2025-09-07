@@ -67,7 +67,7 @@ export function SignIn() {
               </div>
             ) : (
               <GoogleOAuthProvider clientId={import.meta.env.VITE_GOOGLE_CLIENT_ID}>
-                <div className="flex justify-center">
+                <div className="flex justify-center w-full">
                   <GoogleLogin
                     onSuccess={handleSuccess}
                     onError={handleError}
@@ -77,7 +77,7 @@ export function SignIn() {
                     text="signin_with"
                     shape="rectangular"
                     logo_alignment="left"
-                    width="100%"
+                    width={320}
                   />
                 </div>
               </GoogleOAuthProvider>

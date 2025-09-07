@@ -5,9 +5,8 @@
 
 import type { User } from '../types/index';
 
-const API_BASE = import.meta.env.PROD 
-  ? 'https://apps.terralink.cl/api/auth'
-  : 'http://localhost:4500/api/auth';
+// Use relative path for API - works with any deployment
+const API_BASE = '/api/auth';
 
 export interface LoginResponse {
   sessionToken: string;
