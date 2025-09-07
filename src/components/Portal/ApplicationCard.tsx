@@ -11,7 +11,7 @@ interface ApplicationCardProps {
 export function ApplicationCard({ app, onAppClick }: ApplicationCardProps) {
   const [isHovered, setIsHovered] = useState(false);
   
-  const IconComponent = Icons[app.iconName as keyof typeof Icons] as React.ComponentType<any>;
+  const IconComponent = Icons[app.iconName as keyof typeof Icons] as React.ComponentType<React.SVGProps<SVGSVGElement>>;
 
   return (
     <div

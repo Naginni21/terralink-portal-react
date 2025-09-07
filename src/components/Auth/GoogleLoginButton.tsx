@@ -1,36 +1,10 @@
 import React from 'react';
-import { useGoogleLogin, CredentialResponse } from '@react-oauth/google';
-import { useAuth } from '../../contexts/AuthContext';
-import { useNavigate } from 'react-router-dom';
 
+// This component is a placeholder for custom Google login button styling
+// The actual Google login is handled by @react-oauth/google in SignIn.tsx
 export function GoogleLoginButton() {
-  const { login } = useAuth();
-  const navigate = useNavigate();
-  const [isLoading, setIsLoading] = React.useState(false);
-  const [error, setError] = React.useState<string | null>(null);
-
-  const handleSuccess = async (response: CredentialResponse) => {
-    if (!response.credential) {
-      setError('No se recibió credencial de Google');
-      return;
-    }
-
-    setIsLoading(true);
-    setError(null);
-
-    try {
-      await login(response.credential);
-      navigate('/');
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Error al iniciar sesión');
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const handleError = () => {
-    setError('Error al conectar con Google');
-  };
+  const [isLoading] = React.useState(false);
+  const [error] = React.useState<string | null>(null);
 
   return (
     <div className="w-full">
@@ -42,8 +16,7 @@ export function GoogleLoginButton() {
       
       <button
         onClick={() => {
-          // This will be replaced with GoogleOAuthProvider's button
-          // For now, showing the structure
+          // Placeholder - actual Google login handled in SignIn.tsx
         }}
         disabled={isLoading}
         className="w-full flex items-center justify-center gap-3 px-4 py-3 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"

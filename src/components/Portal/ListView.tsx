@@ -40,7 +40,7 @@ export function ListView({ applications, userRole, onAppClick }: ListViewProps) 
               </h3>
               <div className="space-y-1">
                 {apps.map((app) => {
-                  const IconComponent = Icons[app.iconName as keyof typeof Icons] as React.ComponentType<any>;
+                  const IconComponent = Icons[app.iconName as keyof typeof Icons] as React.ComponentType<React.SVGProps<SVGSVGElement>>;
                   return (
                     <button
                       key={app.id}

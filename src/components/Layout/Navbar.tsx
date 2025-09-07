@@ -1,4 +1,3 @@
-import React from 'react';
 import { LogOut } from 'lucide-react';
 import type { User, UserRole, ViewMode } from '../../types/index';
 

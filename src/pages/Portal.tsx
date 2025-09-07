@@ -1,10 +1,11 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import { Navbar } from '../components/Layout/Navbar';
 import { ListView } from '../components/Portal/ListView';
 import type { ViewMode, AccessLog, Application } from '../types/index';
 import { APPLICATIONS_DATA } from '../lib/constants';
+import { authApi } from '../lib/auth-api';
 
 export function Portal() {
   const { user, logout } = useAuth();
@@ -46,11 +47,36 @@ export function Portal() {
     setAccessLogs(prev => [newLog, ...prev].slice(0, 100));
   };
 
-  const handleAppClick = (app: Application) => {
+  const handleAppClick = async (app: Application) => {
     logAccess('app_access', user.email, app.name);
     
     if (app.url) {
-      window.open(app.url, '_blank');
+      try {
+        // Get session token
+        const sessionToken = localStorage.getItem('sessionToken');
+        if (!sessionToken) {
+          alert('Session expired. Please login again.');
+          navigate('/signin');
+          return;
+        }
+
+        // Get app token from API
+        const response = await authApi.getAppToken(sessionToken, app.id);
+        
+        if (response.appToken) {
+          // Create URL with token
+          const appUrl = new URL(app.url);
+          appUrl.searchParams.set('token', response.appToken);
+          
+          // Open app with token
+          window.open(appUrl.toString(), '_blank');
+        } else {
+          alert('Failed to generate app access token');
+        }
+      } catch (error) {
+        console.error('Error generating app token:', error);
+        alert('Error accessing application. Please try again.');
+      }
     } else {
       alert(`La aplicación "${app.name}" estará disponible próximamente`);
     }
@@ -91,7 +117,8 @@ export function Portal() {
   useEffect(() => {
     // Log login on mount
     logAccess('login', user.email);
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user.email]);
 
   return (
     <div className="min-h-screen bg-gray-50">
