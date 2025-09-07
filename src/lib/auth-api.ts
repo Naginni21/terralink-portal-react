@@ -32,7 +32,7 @@ export const authApi = {
     const response = await fetch(`${API_BASE}/login`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ credential: googleToken })
+      body: JSON.stringify({ googleToken })
     });
 
     if (!response.ok) {
