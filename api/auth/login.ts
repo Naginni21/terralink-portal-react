@@ -1,7 +1,7 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import jwt from 'jsonwebtoken';
 import { kv } from '@vercel/kv';
-import { jwtDecode } from 'jwt-decode';
+import { OAuth2Client } from 'google-auth-library';
 
 /**
  * Login endpoint - Authenticates users with Google OAuth
@@ -32,22 +32,36 @@ export default async function handler(
       return res.status(400).json({ error: 'Google token required' });
     }
 
-    // Decode and verify Google token
-    interface GoogleTokenPayload {
-      sub: string;
-      email: string;
-      name: string;
-      picture: string;
-      email_verified: boolean;
-      exp: number;
-      [key: string]: unknown;
-    }
+    // Initialize Google OAuth2 client
+    const client = new OAuth2Client(
+      process.env.VITE_GOOGLE_CLIENT_ID,
+      process.env.GOOGLE_CLIENT_SECRET
+    );
 
-    const googleUser = jwtDecode<GoogleTokenPayload>(googleToken);
-
-    // Check if token is expired
-    if (googleUser.exp * 1000 < Date.now()) {
-      return res.status(401).json({ error: 'Google token expired' });
+    // Verify Google token
+    let googleUser;
+    try {
+      const ticket = await client.verifyIdToken({
+        idToken: googleToken,
+        audience: process.env.VITE_GOOGLE_CLIENT_ID
+      });
+      
+      const payload = ticket.getPayload();
+      if (!payload) {
+        return res.status(401).json({ error: 'Invalid Google token' });
+      }
+      
+      googleUser = {
+        sub: payload.sub,
+        email: payload.email || '',
+        name: payload.name || '',
+        picture: payload.picture || '',
+        email_verified: payload.email_verified || false,
+        exp: payload.exp || 0
+      };
+    } catch (verifyError) {
+      console.error('Token verification failed:', verifyError);
+      return res.status(401).json({ error: 'Invalid or expired Google token' });
     }
 
     // Check email verification
@@ -65,10 +79,13 @@ export default async function handler(
       });
     }
 
-    // Check @terralink.cl domain
-    if (!googleUser.email.endsWith('@terralink.cl')) {
+    // Check allowed domains
+    const allowedDomains = (process.env.ALLOWED_DOMAINS || 'terralink.cl').split(',').map(d => d.trim());
+    const userDomain = googleUser.email.split('@')[1];
+    
+    if (!allowedDomains.includes(userDomain)) {
       await logFailedLogin(googleUser.email, 'invalid_domain', req);
-      return res.status(403).json({ error: 'Solo se permiten correos @terralink.cl' });
+      return res.status(403).json({ error: `Only emails from ${allowedDomains.join(', ')} are allowed` });
     }
 
     // Get user role from constants (you'll need to maintain this list)
@@ -130,18 +147,22 @@ export default async function handler(
 /**
  * Get user role based on email
  */
-type UserRole = 'admin' | 'operaciones' | 'ventas' | 'usuario';
+type UserRole = 'admin' | 'customer' | 'default';
 
 function getUserRole(email: string): UserRole {
-  // This matches the USER_DATABASE from constants.ts
+  // Check if user is in admin list
+  const adminEmails = (process.env.ADMIN_EMAILS || '').split(',').map(e => e.trim());
+  if (adminEmails.includes(email)) {
+    return 'admin';
+  }
+  
+  // Default role mapping (can be extended)
   const roleMap: Record<string, UserRole> = {
-    'felipe.silva@terralink.cl': 'admin',
-    'admin@terralink.cl': 'admin',
-    'operaciones@terralink.cl': 'operaciones',
-    'ventas@terralink.cl': 'ventas'
+    // Add specific customer emails here if needed
+    // 'customer@terralink.cl': 'customer',
   };
   
-  return roleMap[email] || 'usuario'; // Default role
+  return roleMap[email] || 'default'; // Default role
 }
 
 /**

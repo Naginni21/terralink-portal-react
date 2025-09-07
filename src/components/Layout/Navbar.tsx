@@ -1,4 +1,6 @@
-import { LogOut } from 'lucide-react';
+import { LogOut, Shield } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { UserAvatar } from '../Common/UserAvatar';
 import type { User, UserRole, ViewMode } from '../../types/index';
 
 interface NavbarProps {
@@ -10,6 +12,8 @@ interface NavbarProps {
 }
 
 export function Navbar({ user, userRole, onLogout }: NavbarProps) {
+  const navigate = useNavigate();
+  
   const darkPatternStyle = {
     background: 'linear-gradient(135deg, #1a202c 0%, #2d3748 50%, #4a5568 100%)',
     position: 'relative' as const,
@@ -53,10 +57,11 @@ export function Navbar({ user, userRole, onLogout }: NavbarProps) {
           
           <div className="flex items-center gap-4">
             <div className="flex items-center gap-3 bg-white/10 backdrop-blur rounded-lg px-4 py-2">
-              <img
+              <UserAvatar 
                 src={user.image}
-                alt={user.name}
-                className="w-8 h-8 rounded-full border-2 border-white/30"
+                name={user.name}
+                size="sm"
+                className="border-2 border-white/30"
               />
               <div className="hidden md:block">
                 <p className="text-sm font-medium text-white">
@@ -65,6 +70,17 @@ export function Navbar({ user, userRole, onLogout }: NavbarProps) {
                 <p className="text-xs text-gray-300 capitalize">{userRole}</p>
               </div>
             </div>
+            
+            {userRole === 'admin' && (
+              <button
+                onClick={() => navigate('/admin')}
+                className="flex items-center gap-2 px-4 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-700 transition-colors"
+                title="Admin Panel"
+              >
+                <Shield className="w-4 h-4 text-white" />
+                <span className="text-sm font-medium text-white hidden md:inline">Admin</span>
+              </button>
+            )}
             
             <button
               onClick={onLogout}

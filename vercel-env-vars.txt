@@ -1,0 +1,21 @@
+# Environment Variables for Vercel Dashboard
+# Copy these to Vercel Dashboard → Settings → Environment Variables
+
+# REQUIRED VARIABLES:
+
+VITE_GOOGLE_CLIENT_ID=YOUR_GOOGLE_CLIENT_ID_HERE
+JWT_SECRET=change-this-to-a-random-32-character-string-minimum
+
+# OPTIONAL BUT RECOMMENDED:
+
+ALLOWED_DOMAINS=terralink.com.br
+ADMIN_EMAILS=admin@terralink.com.br
+
+# NOTES:
+# 1. For JWT_SECRET, generate a secure random string (32+ characters)
+#    You can use: openssl rand -base64 32
+# 2. ALLOWED_DOMAINS - comma-separated list of allowed email domains
+# 3. ADMIN_EMAILS - comma-separated list of admin email addresses
+# 4. Don't forget to update Google OAuth authorized redirect URIs:
+#    - https://your-project.vercel.app/api/auth/callback
+#    - https://your-custom-domain.com/api/auth/callback

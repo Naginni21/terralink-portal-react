@@ -4,6 +4,7 @@ import { AuthProvider } from './contexts/AuthContext';
 import { ProtectedRoute } from './components/Auth/ProtectedRoute';
 import { SignIn } from './pages/SignIn';
 import { Portal } from './pages/Portal';
+import Admin from './pages/Admin';
 
 function App() {
   return (
@@ -17,6 +18,22 @@ function App() {
               element={
                 <ProtectedRoute>
                   <Portal />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/portal"
+              element={
+                <ProtectedRoute>
+                  <Portal />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/admin"
+              element={
+                <ProtectedRoute>
+                  <Admin />
                 </ProtectedRoute>
               }
             />

@@ -13,10 +13,40 @@ export function ApplicationCard({ app, onAppClick }: ApplicationCardProps) {
   
   const IconComponent = Icons[app.iconName as keyof typeof Icons] as React.ComponentType<React.SVGProps<SVGSVGElement>>;
 
+  const handleClick = async () => {
+    // Track the activity
+    const token = localStorage.getItem('auth_token');
+    if (token) {
+      try {
+        await fetch('/api/activity/track', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+          body: JSON.stringify({
+            appId: app.id,
+            appName: app.name,
+            action: 'click',
+            metadata: {
+              category: app.category,
+              hasUrl: !!app.url
+            }
+          })
+        });
+      } catch (error) {
+        console.error('Failed to track activity:', error);
+      }
+    }
+    
+    // Call the original click handler
+    onAppClick(app);
+  };
+
   return (
     <div
       className="bg-white rounded-lg border border-gray-200 p-5 hover:shadow-md transition-all duration-200 cursor-pointer"
-      onClick={() => onAppClick(app)}
+      onClick={handleClick}
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
     >
