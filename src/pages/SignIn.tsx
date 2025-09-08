@@ -1,62 +1,117 @@
-import React from 'react';
-import { useGoogleLogin } from '@react-oauth/google';
-import type { CodeResponse } from '@react-oauth/google';
+import React, { useEffect, useState } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Zap } from 'lucide-react';
 
 export function SignIn() {
-  const [error, setError] = React.useState<string | null>(null);
-  const [isLoading, setIsLoading] = React.useState(false);
+  const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const [error, setError] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
 
-  // Use authorization code flow for better security
-  const googleLogin = useGoogleLogin({
-    flow: 'auth-code',
-    onSuccess: async (codeResponse: CodeResponse) => {
-      console.log('[OAuth Success] Received auth code:', codeResponse.code ? 'yes' : 'no');
-      setIsLoading(true);
-      setError(null);
+  useEffect(() => {
+    // Check if we're returning from OAuth with a code
+    const code = searchParams.get('code');
+    if (code) {
+      handleOAuthCallback(code);
+    }
 
-      try {
-        // Send authorization code to backend
-        const response = await fetch('/api/auth/google-callback', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            code: codeResponse.code,
-            redirect_uri: window.location.origin + '/signin'
-          })
-        });
+    // Check if already authenticated
+    const token = localStorage.getItem('sessionToken');
+    if (token) {
+      validateSessionAndRedirect(token);
+    }
+  }, [searchParams]);
 
-        if (!response.ok) {
-          const error = await response.json();
-          throw new Error(error.error || 'Authentication failed');
-        }
+  const handleOAuthCallback = async (code: string) => {
+    console.log('[OAuth] Processing callback with code');
+    setIsLoading(true);
+    setError(null);
+    
+    try {
+      const response = await fetch('/api/auth/google-callback', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          code,
+          redirect_uri: window.location.origin + '/signin'
+        })
+      });
 
-        const data = await response.json();
-        console.log('[OAuth] Backend response:', data);
-        
-        if (data.sessionToken) {
-          // Store session
-          localStorage.setItem('sessionToken', data.sessionToken);
-          console.log('[OAuth] Session token stored, redirecting...');
-          
-          // Redirect to auth-redirect page which will handle validation
-          window.location.replace('/auth-redirect');
-        } else {
-          throw new Error('No session token received from backend');
-        }
-      } catch (err) {
-        setError(err instanceof Error ? err.message : 'Error al iniciar sesión');
-      } finally {
-        setIsLoading(false);
+      if (!response.ok) {
+        const errorData = await response.text();
+        throw new Error(errorData || 'Authentication failed');
       }
-    },
-    onError: (errorResponse) => {
-      console.error('[OAuth Error] Google login failed:', errorResponse);
-      setError('Error al conectar con Google. Por favor, intente nuevamente.');
-    },
-    scope: 'openid email profile'
-  });
 
+      const data = await response.json();
+      
+      if (data.sessionToken) {
+        console.log('[OAuth] Session established, redirecting...');
+        localStorage.setItem('sessionToken', data.sessionToken);
+        
+        // Force full page reload to reinitialize app with auth
+        window.location.href = '/';
+      } else {
+        throw new Error('No session token received');
+      }
+    } catch (err) {
+      const errorMsg = err instanceof Error ? err.message : 'Error al iniciar sesión';
+      console.error('[OAuth] Callback error:', errorMsg);
+      setError(errorMsg);
+      setIsLoading(false);
+      
+      // Clear the URL params
+      window.history.replaceState({}, document.title, '/signin');
+    }
+  };
+
+  const validateSessionAndRedirect = async (token: string) => {
+    try {
+      const response = await fetch('/api/auth/validate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ token })
+      });
+
+      if (response.ok) {
+        console.log('[OAuth] Valid session found, redirecting...');
+        navigate('/', { replace: true });
+      } else {
+        console.log('[OAuth] Invalid session, clearing...');
+        localStorage.removeItem('sessionToken');
+      }
+    } catch (err) {
+      console.error('[OAuth] Validation error:', err);
+      localStorage.removeItem('sessionToken');
+    }
+  };
+
+  const initiateGoogleLogin = () => {
+    console.log('[OAuth] Initiating Google login...');
+    
+    const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
+    if (!clientId) {
+      setError('Google Client ID not configured');
+      return;
+    }
+
+    // Build OAuth URL for direct redirect
+    const redirectUri = encodeURIComponent(window.location.origin + '/signin');
+    const scope = encodeURIComponent('openid email profile');
+    const responseType = 'code';
+    const accessType = 'offline';
+    const prompt = 'select_account';
+    
+    const authUrl = `https://accounts.google.com/o/oauth2/v2/auth?` +
+      `client_id=${clientId}&` +
+      `redirect_uri=${redirectUri}&` +
+      `response_type=${responseType}&` +
+      `scope=${scope}&` +
+      `access_type=${accessType}&` +
+      `prompt=${prompt}`;
+    
+    console.log('[OAuth] Redirecting to Google...');
+    window.location.href = authUrl;
+  };
 
   return (
     <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
@@ -87,14 +142,11 @@ export function SignIn() {
             {isLoading ? (
               <div className="flex items-center justify-center py-3">
                 <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600"></div>
-                <span className="ml-3 text-gray-600 text-sm">Iniciando sesión...</span>
+                <span className="ml-3 text-gray-600 text-sm">Procesando autenticación...</span>
               </div>
             ) : (
               <button
-                onClick={() => {
-                  console.log('[OAuth] Starting Google login...');
-                  googleLogin();
-                }}
+                onClick={initiateGoogleLogin}
                 className="w-full flex items-center justify-center gap-3 px-4 py-3 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
               >
                 <svg className="w-5 h-5" viewBox="0 0 24 24">
@@ -120,8 +172,21 @@ export function SignIn() {
             )}
           </div>
 
+          {/* Debug Links */}
+          <div className="mt-6 pt-6 border-t border-gray-100 space-y-2">
+            <a href="/signin-debug" className="block text-center text-xs text-blue-600 hover:underline">
+              Debug Mode →
+            </a>
+            <a href="/universal-signin" className="block text-center text-xs text-blue-600 hover:underline">
+              Universal Sign In →
+            </a>
+            <a href="/oauth-minimal" className="block text-center text-xs text-blue-600 hover:underline">
+              Minimal Test →
+            </a>
+          </div>
+
           {/* Footer */}
-          <div className="mt-8 pt-6 border-t border-gray-100">
+          <div className="mt-6 pt-6 border-t border-gray-100">
             <p className="text-center text-xs text-gray-400">
               Solo correos @terralink.cl tienen acceso
             </p>
