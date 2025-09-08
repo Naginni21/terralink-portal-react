@@ -32,10 +32,18 @@ export function SignIn() {
         }
 
         const data = await response.json();
+        console.log('[OAuth] Backend response:', data);
         
-        // Store session and redirect
-        localStorage.setItem('sessionToken', data.sessionToken);
-        window.location.href = '/';
+        if (data.sessionToken) {
+          // Store session
+          localStorage.setItem('sessionToken', data.sessionToken);
+          console.log('[OAuth] Session token stored, redirecting...');
+          
+          // Redirect to auth-redirect page which will handle validation
+          window.location.replace('/auth-redirect');
+        } else {
+          throw new Error('No session token received from backend');
+        }
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Error al iniciar sesión');
       } finally {
