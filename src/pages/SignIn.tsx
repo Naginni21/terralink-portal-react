@@ -72,7 +72,6 @@ export function SignIn() {
                     onSuccess={handleSuccess}
                     onError={handleError}
                     useOneTap={false}
-                    prompt="select_account"
                     theme="outline"
                     size="large"
                     text="signin_with"

@@ -2,7 +2,7 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { GoogleOAuthProvider } from '@react-oauth/google';
 import { AuthProvider } from './contexts/AuthContext';
 import { ProtectedRoute } from './components/Auth/ProtectedRoute';
-import { SignIn } from './pages/SignIn';
+import { SignInManual } from './pages/SignInManual';
 import { Portal } from './pages/Portal';
 import Admin from './pages/Admin';
 
@@ -12,7 +12,7 @@ function App() {
       <AuthProvider>
         <BrowserRouter>
           <Routes>
-            <Route path="/signin" element={<SignIn />} />
+            <Route path="/signin" element={<SignInManual />} />
             <Route
               path="/"
               element={

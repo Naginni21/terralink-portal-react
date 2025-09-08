@@ -2,6 +2,7 @@ import type { VercelRequest, VercelResponse } from '@vercel/node';
 import jwt from 'jsonwebtoken';
 import { kv } from '@vercel/kv';
 import { OAuth2Client } from 'google-auth-library';
+import { validateEnvironment, getAllowedDomains, getAdminEmails, AUTH_CONFIG } from './config';
 
 /**
  * Login endpoint - Authenticates users with Google OAuth
@@ -11,6 +12,13 @@ export default async function handler(
   req: VercelRequest,
   res: VercelResponse
 ) {
+  // Validate environment on each request
+  const envValidation = validateEnvironment();
+  if (!envValidation.valid) {
+    console.error('Environment validation failed:', envValidation.errors);
+    return res.status(500).json({ error: 'Server configuration error' });
+  }
+
   // Only accept POST requests
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
@@ -59,7 +67,7 @@ export default async function handler(
       };
     } catch (verifyError) {
       console.error('Token verification failed:', verifyError);
-      return res.status(401).json({ error: 'Invalid or expired Google token' });
+      return res.status(401).json({ error: 'Authentication failed' });
     }
 
     // Check email verification
@@ -73,8 +81,7 @@ export default async function handler(
       if (blacklisted) {
         await logFailedLogin(googleUser.email, 'blacklisted', req);
         return res.status(403).json({ 
-          error: 'Access revoked',
-          reason: (blacklisted as any).reason 
+          error: 'Access denied'
         });
       }
     } catch (kvError) {
@@ -82,8 +89,8 @@ export default async function handler(
     }
 
     // Check allowed domains
-    const allowedDomains = (process.env.ALLOWED_DOMAINS || 'terralink.cl').split(',').map(d => d.trim());
-    const userDomain = googleUser.email.split('@')[1];
+    const allowedDomains = getAllowedDomains();
+    const userDomain = googleUser.email.split('@')[1].toLowerCase();
     
     if (!allowedDomains.includes(userDomain)) {
       try {
@@ -91,11 +98,17 @@ export default async function handler(
       } catch (error) {
         console.log('Could not log failed login');
       }
-      return res.status(403).json({ error: `Only emails from ${allowedDomains.join(', ')} are allowed` });
+      return res.status(403).json({ error: 'Access denied' });
     }
 
     // Get user role from constants (you'll need to maintain this list)
     const userRole = getUserRole(googleUser.email);
+
+    // Ensure JWT_SECRET is set
+    if (!process.env.JWT_SECRET) {
+      console.error('JWT_SECRET not configured');
+      return res.status(500).json({ error: 'Server configuration error' });
+    }
 
     // Create 30-day session JWT
     const sessionToken = jwt.sign(
@@ -106,8 +119,8 @@ export default async function handler(
         role: userRole,
         picture: googleUser.picture
       },
-      process.env.JWT_SECRET || 'dev-secret-change-in-production',
-      { expiresIn: '30d' }
+      process.env.JWT_SECRET,
+      { expiresIn: `${AUTH_CONFIG.SESSION_DURATION_DAYS}d` }
     );
 
     // Store session in KV with Google token for revalidation
@@ -153,8 +166,7 @@ export default async function handler(
   } catch (error: any) {
     console.error('Login error:', error);
     return res.status(500).json({ 
-      error: 'Internal server error',
-      message: process.env.NODE_ENV === 'development' ? error.message : undefined
+      error: 'Authentication failed'
     });
   }
 }
@@ -166,8 +178,8 @@ type UserRole = 'admin' | 'customer' | 'default';
 
 function getUserRole(email: string): UserRole {
   // Check if user is in admin list
-  const adminEmails = (process.env.ADMIN_EMAILS || '').split(',').map(e => e.trim());
-  if (adminEmails.includes(email)) {
+  const adminEmails = getAdminEmails();
+  if (adminEmails.includes(email.toLowerCase())) {
     return 'admin';
   }
   
