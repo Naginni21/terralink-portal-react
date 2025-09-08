@@ -1,13 +1,13 @@
 import React from 'react';
-import { useGoogleLogin } from '@react-oauth/google';
+import { GoogleOAuthProvider, useGoogleLogin } from '@react-oauth/google';
 import type { CodeResponse } from '@react-oauth/google';
 import { Zap } from 'lucide-react';
 
-export function SignIn() {
+// Inner component that uses the OAuth hook
+function SignInContent() {
   const [error, setError] = React.useState<string | null>(null);
   const [isLoading, setIsLoading] = React.useState(false);
 
-  // Use authorization code flow for better security
   const googleLogin = useGoogleLogin({
     flow: 'auth-code',
     onSuccess: async (codeResponse: CodeResponse) => {
@@ -16,7 +16,6 @@ export function SignIn() {
       setError(null);
 
       try {
-        // Send authorization code to backend
         const response = await fetch('/api/auth/google-callback', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -32,8 +31,6 @@ export function SignIn() {
         }
 
         const data = await response.json();
-        
-        // Store session and redirect
         localStorage.setItem('sessionToken', data.sessionToken);
         window.location.href = '/';
       } catch (err) {
@@ -49,32 +46,31 @@ export function SignIn() {
     scope: 'openid email profile'
   });
 
-
   return (
     <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
       <div className="max-w-md w-full">
         <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-8">
-          {/* Logo and Title */}
           <div className="text-center mb-8">
             <div className="inline-flex items-center justify-center w-12 h-12 bg-blue-600 rounded-lg mb-4">
               <Zap className="w-7 h-7 text-white" />
             </div>
             <h1 className="text-2xl font-semibold text-gray-900 mb-2">
-              Terralink Portal
+              Terralink Portal (Local Provider)
             </h1>
             <p className="text-sm text-gray-500">
               Sistema Interno de Aplicaciones
             </p>
+            <p className="text-xs text-green-600 mt-2">
+              ✅ Using LOCAL GoogleOAuthProvider
+            </p>
           </div>
 
-          {/* Error Message */}
           {error && (
             <div className="mb-6 p-3 bg-red-50 border border-red-200 text-red-600 rounded text-sm">
               {error}
             </div>
           )}
 
-          {/* Login Button */}
           <div className="space-y-4">
             {isLoading ? (
               <div className="flex items-center justify-center py-3">
@@ -84,7 +80,7 @@ export function SignIn() {
             ) : (
               <button
                 onClick={() => {
-                  console.log('[OAuth] Starting Google login...');
+                  console.log('[OAuth] Starting Google login with LOCAL provider...');
                   googleLogin();
                 }}
                 className="w-full flex items-center justify-center gap-3 px-4 py-3 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
@@ -112,7 +108,6 @@ export function SignIn() {
             )}
           </div>
 
-          {/* Footer */}
           <div className="mt-8 pt-6 border-t border-gray-100">
             <p className="text-center text-xs text-gray-400">
               Solo correos @terralink.cl tienen acceso
@@ -120,7 +115,6 @@ export function SignIn() {
           </div>
         </div>
 
-        {/* Security Notice */}
         <div className="mt-4 text-center">
           <p className="text-xs text-gray-400">
             © 2024 Terralink - Conexión segura con Google OAuth 2.0
@@ -128,5 +122,30 @@ export function SignIn() {
         </div>
       </div>
     </div>
+  );
+}
+
+// Main component with LOCAL provider
+export function SignInLocal() {
+  const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
+
+  if (!clientId) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
+        <div className="bg-red-50 p-4 rounded">
+          <p className="text-red-600">Error: No Client ID found</p>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <GoogleOAuthProvider 
+      clientId={clientId}
+      onScriptLoadSuccess={() => console.log('✅ [LOCAL] Google script loaded successfully')}
+      onScriptLoadError={() => console.error('❌ [LOCAL] Google script failed to load')}
+    >
+      <SignInContent />
+    </GoogleOAuthProvider>
   );
 }

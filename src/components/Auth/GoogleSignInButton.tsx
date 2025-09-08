@@ -1,4 +1,3 @@
-import React from 'react';
 import { useGoogleLogin } from '@react-oauth/google';
 import type { CodeResponse } from '@react-oauth/google';
 

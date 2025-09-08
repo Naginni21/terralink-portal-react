@@ -5,14 +5,33 @@ import { ProtectedRoute } from './components/Auth/ProtectedRoute';
 import { SignIn } from './pages/SignIn';
 import { Portal } from './pages/Portal';
 import Admin from './pages/Admin';
+import { OAuthDebug } from './pages/OAuthDebug';
+import { SimpleOAuth } from './pages/SimpleOAuth';
+import { TestGoogleLib } from './pages/TestGoogleLib';
+import { SignInLocal } from './pages/SignInLocal';
 
 function App() {
+  const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
+  
+  // Debug logging for OAuth configuration
+  console.log('[OAuth Debug] Client ID:', clientId);
+  console.log('[OAuth Debug] Current origin:', window.location.origin);
+  console.log('[OAuth Debug] Environment:', import.meta.env.MODE);
+  
+  if (!clientId) {
+    console.error('[OAuth Error] No client ID found! Check VITE_GOOGLE_CLIENT_ID env variable');
+  }
+  
   return (
-    <GoogleOAuthProvider clientId={import.meta.env.VITE_GOOGLE_CLIENT_ID}>
+    <GoogleOAuthProvider clientId={clientId}>
       <AuthProvider>
         <BrowserRouter>
           <Routes>
             <Route path="/signin" element={<SignIn />} />
+            <Route path="/signin-local" element={<SignInLocal />} />
+            <Route path="/oauth-debug" element={<OAuthDebug />} />
+            <Route path="/simple-oauth" element={<SimpleOAuth />} />
+            <Route path="/test-lib" element={<TestGoogleLib />} />
             <Route
               path="/"
               element={
