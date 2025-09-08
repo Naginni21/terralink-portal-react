@@ -1,10 +1,9 @@
 import React from 'react';
 import { useGoogleLogin } from '@react-oauth/google';
 import type { CodeResponse } from '@react-oauth/google';
-import { GoogleOAuthProvider } from '@react-oauth/google';
 import { Zap } from 'lucide-react';
 
-function SignInDebugContent() {
+export function SignInDebug() {
   const [logs, setLogs] = React.useState<string[]>([]);
   const [error, setError] = React.useState<string | null>(null);
   const [isLoading, setIsLoading] = React.useState(false);
@@ -16,8 +15,22 @@ function SignInDebugContent() {
     setLogs(prev => [...prev, logEntry]);
   };
 
+  // Add immediate logging when component mounts
+  React.useEffect(() => {
+    addLog('🔧 Component mounted, OAuth hook initialized');
+    addLog(`🔧 Client ID: ${import.meta.env.VITE_GOOGLE_CLIENT_ID ? 'Present' : 'Missing'}`);
+    addLog(`🔧 Current origin: ${window.location.origin}`);
+    // Check if Google library is loaded
+    if (typeof window !== 'undefined' && (window as any).google) {
+      addLog('✅ Google library is loaded');
+    } else {
+      addLog('⚠️ Google library not detected');
+    }
+  }, []);
+
   const googleLogin = useGoogleLogin({
     flow: 'auth-code',
+    redirect_uri: window.location.origin + '/signin-debug',
     onSuccess: async (codeResponse: CodeResponse) => {
       addLog(`✅ OAuth Success! Auth code received: ${codeResponse.code ? 'YES' : 'NO'}`);
       setIsLoading(true);
@@ -99,7 +112,12 @@ function SignInDebugContent() {
       addLog(`❌ OAuth Error: ${JSON.stringify(errorResponse)}`);
       setError('OAuth login failed');
     },
-    scope: 'openid email profile'
+    onNonOAuthError: (errorResponse) => {
+      addLog(`❌ Non-OAuth Error: ${JSON.stringify(errorResponse)}`);
+      setError('Non-OAuth error occurred');
+    },
+    scope: 'openid email profile',
+    ux_mode: 'popup'
   });
 
   const checkCurrentState = () => {
@@ -164,7 +182,14 @@ function SignInDebugContent() {
                 <button
                   onClick={() => {
                     addLog('🚀 Starting Google login...');
-                    googleLogin();
+                    addLog(`🔧 Attempting OAuth with redirect_uri: ${window.location.origin}/signin-debug`);
+                    try {
+                      googleLogin();
+                      addLog('✅ OAuth popup/redirect initiated');
+                    } catch (error) {
+                      addLog(`❌ Failed to initiate OAuth: ${error}`);
+                      setError(`Failed to start OAuth: ${error}`);
+                    }
                   }}
                   className="w-full flex items-center justify-center gap-3 px-4 py-3 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
                 >
@@ -235,26 +260,3 @@ function SignInDebugContent() {
   );
 }
 
-export function SignInDebug() {
-  const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
-
-  if (!clientId) {
-    return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
-        <div className="bg-red-50 p-4 rounded">
-          <p className="text-red-600">Error: No Client ID found</p>
-        </div>
-      </div>
-    );
-  }
-
-  return (
-    <GoogleOAuthProvider 
-      clientId={clientId}
-      onScriptLoadSuccess={() => console.log('✅ [DEBUG] Google script loaded')}
-      onScriptLoadError={() => console.error('❌ [DEBUG] Google script failed to load')}
-    >
-      <SignInDebugContent />
-    </GoogleOAuthProvider>
-  );
-}

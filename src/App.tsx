@@ -11,6 +11,7 @@ import { TestGoogleLib } from './pages/TestGoogleLib';
 import { SignInLocal } from './pages/SignInLocal';
 import { SignInDebug } from './pages/SignInDebug';
 import { AuthRedirect } from './pages/AuthRedirect';
+import { OAuthMinimal } from './pages/OAuthMinimal';
 
 function App() {
   const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
@@ -36,6 +37,7 @@ function App() {
             <Route path="/oauth-debug" element={<OAuthDebug />} />
             <Route path="/simple-oauth" element={<SimpleOAuth />} />
             <Route path="/test-lib" element={<TestGoogleLib />} />
+            <Route path="/oauth-minimal" element={<OAuthMinimal />} />
             <Route
               path="/"
               element={
