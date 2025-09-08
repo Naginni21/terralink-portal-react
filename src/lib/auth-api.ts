@@ -50,7 +50,7 @@ export const authApi = {
     const response = await fetch(`${API_BASE}/validate`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ sessionToken })
+      body: JSON.stringify({ token: sessionToken })  // Backend expects 'token' not 'sessionToken'
     });
 
     if (!response.ok) {
@@ -68,7 +68,7 @@ export const authApi = {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ 
-        sessionToken,
+        token: sessionToken,  // Backend expects 'token' not 'sessionToken'
         generateAppToken: true,
         appId 
       })
