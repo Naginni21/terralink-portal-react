@@ -13,6 +13,7 @@ import { SignInDebug } from './pages/SignInDebug';
 import { AuthRedirect } from './pages/AuthRedirect';
 import { OAuthMinimal } from './pages/OAuthMinimal';
 import { UniversalSignIn } from './pages/UniversalSignIn';
+import { AuthTest } from './pages/AuthTest';
 
 function App() {
   const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
@@ -40,6 +41,7 @@ function App() {
             <Route path="/test-lib" element={<TestGoogleLib />} />
             <Route path="/oauth-minimal" element={<OAuthMinimal />} />
             <Route path="/universal-signin" element={<UniversalSignIn />} />
+            <Route path="/auth-test" element={<AuthTest />} />
             <Route
               path="/"
               element={

@@ -7,60 +7,114 @@ export function SignIn() {
   const [searchParams] = useSearchParams();
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [status, setStatus] = useState<string>('');
+  const [debugInfo, setDebugInfo] = useState<any>({});
 
   useEffect(() => {
+    // Log current state
+    console.log('[OAuth] SignIn component mounted');
+    console.log('[OAuth] Current URL:', window.location.href);
+    console.log('[OAuth] Search params:', Object.fromEntries(searchParams));
+    
+    // Update debug info
+    setDebugInfo({
+      url: window.location.href,
+      params: Object.fromEntries(searchParams),
+      hasCode: searchParams.has('code'),
+      hasToken: !!localStorage.getItem('sessionToken')
+    });
+    
     // Check if we're returning from OAuth with a code
     const code = searchParams.get('code');
     if (code) {
+      console.log('[OAuth] Found authorization code in URL');
+      setStatus('Processing Google authentication...');
       handleOAuthCallback(code);
-    }
-
-    // Check if already authenticated
-    const token = localStorage.getItem('sessionToken');
-    if (token) {
-      validateSessionAndRedirect(token);
+    } else {
+      console.log('[OAuth] No authorization code in URL');
+      
+      // Check if already authenticated
+      const token = localStorage.getItem('sessionToken');
+      if (token) {
+        console.log('[OAuth] Found existing session token');
+        setStatus('Validating existing session...');
+        validateSessionAndRedirect(token);
+      } else {
+        console.log('[OAuth] No existing session found');
+      }
     }
   }, [searchParams]);
 
   const handleOAuthCallback = async (code: string) => {
-    console.log('[OAuth] Processing callback with code');
+    console.log('[OAuth] Processing callback with code:', code.substring(0, 10) + '...');
     setIsLoading(true);
     setError(null);
+    setStatus('Exchanging authorization code for session...');
+    
+    const apiUrl = '/api/auth/google-callback';
+    const payload = {
+      code,
+      redirect_uri: window.location.origin + '/signin'
+    };
+    
+    console.log('[OAuth] Calling API:', apiUrl);
+    console.log('[OAuth] Payload:', { ...payload, code: payload.code.substring(0, 10) + '...' });
     
     try {
-      const response = await fetch('/api/auth/google-callback', {
+      const response = await fetch(apiUrl, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          code,
-          redirect_uri: window.location.origin + '/signin'
-        })
+        body: JSON.stringify(payload)
       });
+      
+      console.log('[OAuth] API Response status:', response.status);
+      console.log('[OAuth] API Response headers:', Object.fromEntries(response.headers.entries()));
 
       if (!response.ok) {
-        const errorData = await response.text();
-        throw new Error(errorData || 'Authentication failed');
+        const errorText = await response.text();
+        console.error('[OAuth] API Error:', errorText);
+        
+        let errorMessage = 'Authentication failed';
+        try {
+          const errorData = JSON.parse(errorText);
+          errorMessage = errorData.error || errorMessage;
+        } catch {
+          errorMessage = errorText || errorMessage;
+        }
+        
+        throw new Error(errorMessage);
       }
 
       const data = await response.json();
+      console.log('[OAuth] API Response data:', { ...data, sessionToken: data.sessionToken ? '***' : undefined });
       
       if (data.sessionToken) {
-        console.log('[OAuth] Session established, redirecting...');
+        console.log('[OAuth] Session established successfully');
+        setStatus('Login successful! Redirecting...');
         localStorage.setItem('sessionToken', data.sessionToken);
         
-        // Force full page reload to reinitialize app with auth
-        window.location.href = '/';
+        // Small delay to show success message
+        setTimeout(() => {
+          console.log('[OAuth] Redirecting to portal...');
+          window.location.href = '/';
+        }, 500);
       } else {
-        throw new Error('No session token received');
+        throw new Error('No session token received from server');
       }
     } catch (err) {
       const errorMsg = err instanceof Error ? err.message : 'Error al iniciar sesión';
-      console.error('[OAuth] Callback error:', errorMsg);
+      console.error('[OAuth] Callback error:', errorMsg, err);
       setError(errorMsg);
+      setStatus('');
       setIsLoading(false);
       
-      // Clear the URL params
-      window.history.replaceState({}, document.title, '/signin');
+      // Update debug info with error
+      setDebugInfo(prev => ({ ...prev, error: errorMsg }));
+      
+      // Clear the URL params after a delay
+      setTimeout(() => {
+        window.history.replaceState({}, document.title, '/signin');
+      }, 2000);
     }
   };
 
@@ -130,10 +184,26 @@ export function SignIn() {
             </p>
           </div>
 
+          {/* Status Message */}
+          {status && !error && (
+            <div className="mb-4 p-3 bg-blue-50 border border-blue-200 text-blue-600 rounded text-sm">
+              {status}
+            </div>
+          )}
+          
           {/* Error Message */}
           {error && (
             <div className="mb-6 p-3 bg-red-50 border border-red-200 text-red-600 rounded text-sm">
+              <div className="font-semibold">Error:</div>
               {error}
+            </div>
+          )}
+          
+          {/* Debug Info (only in development) */}
+          {import.meta.env.DEV && Object.keys(debugInfo).length > 0 && (
+            <div className="mb-4 p-2 bg-gray-100 border border-gray-300 rounded text-xs font-mono">
+              <div className="font-semibold mb-1">Debug Info:</div>
+              <pre className="whitespace-pre-wrap">{JSON.stringify(debugInfo, null, 2)}</pre>
             </div>
           )}
 
@@ -174,6 +244,9 @@ export function SignIn() {
 
           {/* Debug Links */}
           <div className="mt-6 pt-6 border-t border-gray-100 space-y-2">
+            <a href="/auth-test" className="block text-center text-xs text-red-600 hover:underline font-semibold">
+              🔧 Run Authentication Tests →
+            </a>
             <a href="/signin-debug" className="block text-center text-xs text-blue-600 hover:underline">
               Debug Mode →
             </a>
