@@ -2,7 +2,7 @@ import type { VercelRequest, VercelResponse } from '@vercel/node';
 import jwt from 'jsonwebtoken';
 import { kv } from '@vercel/kv';
 import { OAuth2Client } from 'google-auth-library';
-import { validateEnvironment, getAllowedDomains, getAdminEmails, AUTH_CONFIG } from './config.js';
+import { validateEnvironment, getAllowedDomains, getAdminEmails, AUTH_CONFIG, getGoogleClientId } from './config.js';
 
 /**
  * Login endpoint - Authenticates users with Google OAuth
@@ -42,14 +42,19 @@ export default async function handler(
 
     // Initialize Google OAuth2 client
     // For ID token verification, we only need the Client ID
-    const client = new OAuth2Client(process.env.VITE_GOOGLE_CLIENT_ID);
+    const googleClientId = getGoogleClientId();
+    if (!googleClientId) {
+      console.error('Google Client ID not configured');
+      return res.status(500).json({ error: 'Server configuration error' });
+    }
+    const client = new OAuth2Client(googleClientId);
 
     // Verify Google token
     let googleUser;
     try {
       const ticket = await client.verifyIdToken({
         idToken: googleToken,
-        audience: process.env.VITE_GOOGLE_CLIENT_ID
+        audience: googleClientId
       });
       
       const payload = ticket.getPayload();

@@ -6,8 +6,7 @@
  * Required environment variables for production
  */
 const REQUIRED_ENV_VARS = [
-  'JWT_SECRET',
-  'VITE_GOOGLE_CLIENT_ID'
+  'JWT_SECRET'
 ];
 
 /**
@@ -78,11 +77,13 @@ export function validateEnvironment(): { valid: boolean; errors: string[] } {
     }
   }
   
-  // Check Google Client ID format
-  if (process.env.VITE_GOOGLE_CLIENT_ID) {
-    if (!process.env.VITE_GOOGLE_CLIENT_ID.endsWith('.apps.googleusercontent.com')) {
-      errors.push('VITE_GOOGLE_CLIENT_ID does not appear to be a valid Google OAuth client ID');
-    }
+  // Check Google Client ID - try both with and without VITE_ prefix
+  const googleClientId = process.env.VITE_GOOGLE_CLIENT_ID || process.env.GOOGLE_CLIENT_ID;
+  
+  if (!googleClientId) {
+    errors.push('Missing required environment variable: GOOGLE_CLIENT_ID or VITE_GOOGLE_CLIENT_ID');
+  } else if (!googleClientId.endsWith('.apps.googleusercontent.com')) {
+    errors.push('Google Client ID does not appear to be valid');
   }
   
   // Warn about recommended variables in production
@@ -136,6 +137,13 @@ export function getAdminEmails(): string[] {
  */
 export function isProduction(): boolean {
   return process.env.NODE_ENV === 'production';
+}
+
+/**
+ * Get Google Client ID from environment
+ */
+export function getGoogleClientId(): string | undefined {
+  return process.env.VITE_GOOGLE_CLIENT_ID || process.env.GOOGLE_CLIENT_ID;
 }
 
 /**

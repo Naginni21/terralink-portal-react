@@ -3,7 +3,7 @@ import jwt from 'jsonwebtoken';
 import { kv } from '@vercel/kv';
 import { jwtDecode } from 'jwt-decode';
 import crypto from 'crypto';
-import { validateEnvironment, getAllowedDomains, AUTH_CONFIG } from './config.js';
+import { validateEnvironment, getAllowedDomains, AUTH_CONFIG, getGoogleClientId } from './config.js';
 
 /**
  * Universal validation endpoint
@@ -310,7 +310,8 @@ async function revalidateGoogleToken(googleToken: string): Promise<boolean> {
     const tokenInfo = await response.json();
     
     // Verify the token belongs to our app
-    if (tokenInfo.aud !== process.env.VITE_GOOGLE_CLIENT_ID) {
+    const googleClientId = getGoogleClientId();
+    if (tokenInfo.aud !== googleClientId) {
       console.error('Token audience mismatch');
       return false;
     }
