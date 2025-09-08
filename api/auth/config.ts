@@ -6,7 +6,8 @@
  * Required environment variables for production
  */
 const REQUIRED_ENV_VARS = [
-  'JWT_SECRET'
+  'JWT_SECRET',
+  'GOOGLE_CLIENT_SECRET'
 ];
 
 /**
@@ -77,13 +78,21 @@ export function validateEnvironment(): { valid: boolean; errors: string[] } {
     }
   }
   
-  // Check Google Client ID - try both with and without VITE_ prefix
+  // Check Google OAuth configuration
   const googleClientId = process.env.VITE_GOOGLE_CLIENT_ID || process.env.GOOGLE_CLIENT_ID;
+  const googleClientSecret = process.env.GOOGLE_CLIENT_SECRET;
   
   if (!googleClientId) {
-    errors.push('Missing required environment variable: GOOGLE_CLIENT_ID or VITE_GOOGLE_CLIENT_ID');
+    errors.push('Missing required: GOOGLE_CLIENT_ID or VITE_GOOGLE_CLIENT_ID');
   } else if (!googleClientId.endsWith('.apps.googleusercontent.com')) {
     errors.push('Google Client ID does not appear to be valid');
+  }
+  
+  // Check Google Client Secret (required for secure OAuth flow)
+  if (!googleClientSecret) {
+    errors.push('Missing required: GOOGLE_CLIENT_SECRET - needed for authorization code flow');
+  } else if (googleClientSecret.length < 20) {
+    errors.push('GOOGLE_CLIENT_SECRET appears to be invalid (too short)');
   }
   
   // Warn about recommended variables in production
