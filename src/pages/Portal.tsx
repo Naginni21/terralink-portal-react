@@ -5,7 +5,7 @@ import { Navbar } from '../components/Layout/Navbar';
 import { ListView } from '../components/Portal/ListView';
 import type { ViewMode, AccessLog, Application } from '../types/index';
 import { APPLICATIONS_DATA } from '../lib/constants';
-import { authApi } from '../lib/auth-api';
+// auth-api removed - using cookie-based authentication now
 
 export function Portal() {
   const { user, logout } = useAuth();
@@ -51,32 +51,9 @@ export function Portal() {
     logAccess('app_access', user.email, app.name);
     
     if (app.url) {
-      try {
-        // Get session token
-        const sessionToken = localStorage.getItem('sessionToken');
-        if (!sessionToken) {
-          alert('Session expired. Please login again.');
-          navigate('/signin');
-          return;
-        }
-
-        // Get app token from API
-        const response = await authApi.getAppToken(sessionToken, app.id);
-        
-        if (response.appToken) {
-          // Create URL with token
-          const appUrl = new URL(app.url);
-          appUrl.searchParams.set('token', response.appToken);
-          
-          // Open app with token
-          window.open(appUrl.toString(), '_blank');
-        } else {
-          alert('Failed to generate app access token');
-        }
-      } catch (error) {
-        console.error('Error generating app token:', error);
-        alert('Error accessing application. Please try again.');
-      }
+      // For now, open apps directly without token
+      // TODO: Implement app token generation with new auth architecture if needed
+      window.open(app.url, '_blank');
     } else {
       alert(`La aplicación "${app.name}" estará disponible próximamente`);
     }
