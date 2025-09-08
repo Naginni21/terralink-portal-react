@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Zap } from 'lucide-react';
 
@@ -109,7 +109,7 @@ export function SignIn() {
       setIsLoading(false);
       
       // Update debug info with error
-      setDebugInfo(prev => ({ ...prev, error: errorMsg }));
+      setDebugInfo((prev: any) => ({ ...prev, error: errorMsg }));
       
       // Clear the URL params after a delay
       setTimeout(() => {
