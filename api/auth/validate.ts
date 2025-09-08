@@ -3,7 +3,7 @@ import jwt from 'jsonwebtoken';
 import { kv } from '@vercel/kv';
 import { jwtDecode } from 'jwt-decode';
 import crypto from 'crypto';
-import { validateEnvironment, getAllowedDomains, AUTH_CONFIG } from './config';
+import { validateEnvironment, getAllowedDomains, AUTH_CONFIG } from './config.js';
 
 /**
  * Universal validation endpoint

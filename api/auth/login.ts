@@ -2,7 +2,7 @@ import type { VercelRequest, VercelResponse } from '@vercel/node';
 import jwt from 'jsonwebtoken';
 import { kv } from '@vercel/kv';
 import { OAuth2Client } from 'google-auth-library';
-import { validateEnvironment, getAllowedDomains, getAdminEmails, AUTH_CONFIG } from './config';
+import { validateEnvironment, getAllowedDomains, getAdminEmails, AUTH_CONFIG } from './config.js';
 
 /**
  * Login endpoint - Authenticates users with Google OAuth
