@@ -265,6 +265,9 @@ export function SignIn() {
 
           {/* Debug Links */}
           <div className="mt-6 pt-6 border-t border-gray-100 space-y-2">
+            <a href="/oauth-info" className="block text-center text-xs text-green-600 hover:underline font-semibold">
+              ⚙️ Check OAuth Configuration →
+            </a>
             <a href="/auth-test" className="block text-center text-xs text-red-600 hover:underline font-semibold">
               🔧 Run Authentication Tests →
             </a>

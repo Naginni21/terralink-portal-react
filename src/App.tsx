@@ -14,6 +14,7 @@ import { AuthRedirect } from './pages/AuthRedirect';
 import { OAuthMinimal } from './pages/OAuthMinimal';
 import { UniversalSignIn } from './pages/UniversalSignIn';
 import { AuthTest } from './pages/AuthTest';
+import { OAuthInfo } from './pages/OAuthInfo';
 
 function App() {
   const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
@@ -42,6 +43,7 @@ function App() {
             <Route path="/oauth-minimal" element={<OAuthMinimal />} />
             <Route path="/universal-signin" element={<UniversalSignIn />} />
             <Route path="/auth-test" element={<AuthTest />} />
+            <Route path="/oauth-info" element={<OAuthInfo />} />
             <Route
               path="/"
               element={
