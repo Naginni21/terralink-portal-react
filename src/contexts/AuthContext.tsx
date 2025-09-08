@@ -1,119 +1,123 @@
-import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
 import type { User } from '../types/index';
-import { authApi, getStoredSessionToken, storeSessionToken, clearSession } from '../lib/auth-api';
 
 interface AuthContextType {
   user: User | null;
+  csrfToken: string | null;
   isLoading: boolean;
-  isValidating: boolean;
-  lastValidated: number | null;
   login: (credential: string) => Promise<void>;
-  logout: () => void;
+  logout: () => Promise<void>;
   validateSession: () => Promise<boolean>;
-  getSessionToken: () => string | null;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-export function AuthProvider({ children }: { children: React.ReactNode }) {
+export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
+  const [csrfToken, setCsrfToken] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [isValidating, setIsValidating] = useState(false);
-  const [lastValidated, setLastValidated] = useState<number | null>(null);
 
-  // Validate session with API
+  // Validate session with backend
   const validateSession = useCallback(async (): Promise<boolean> => {
-    if (isValidating) return true;
-    setIsValidating(true);
-
     try {
-      const sessionToken = getStoredSessionToken();
-      
-      if (!sessionToken) {
+      const response = await fetch('/api/auth/session', {
+        method: 'GET',
+        credentials: 'include', // Include cookies
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (!response.ok) {
         setUser(null);
+        setCsrfToken(null);
         return false;
       }
 
-      // Validate with API
-      const response = await authApi.validateSession(sessionToken);
+      const data = await response.json();
       
-      if (!response.valid) {
-        // Session invalid or expired
-        clearSession();
-        setUser(null);
-        return false;
+      if (data.authenticated && data.user) {
+        setUser(data.user);
+        setCsrfToken(data.csrfToken);
+        return true;
       }
 
-      // Update user state
-      if (response.user) {
-        setUser(response.user);
-        setLastValidated(Date.now());
-      }
-
-      return true;
-    } catch (error) {
-      console.error('Session validation failed:', error);
-      clearSession();
       setUser(null);
+      setCsrfToken(null);
       return false;
-    } finally {
-      setIsValidating(false);
-    }
-  }, [isValidating]);
-
-  // Login function - uses API
-  const login = async (googleCredential: string) => {
-    try {
-      // Send Google token to API for validation and session creation
-      const response = await authApi.login(googleCredential);
-      
-      // Store session token
-      storeSessionToken(response.sessionToken);
-      
-      // Update state
-      setUser(response.user);
-      setLastValidated(Date.now());
     } catch (error) {
-      console.error('Login failed:', error);
+      console.error('[Auth] Session validation failed:', error);
+      setUser(null);
+      setCsrfToken(null);
+      return false;
+    }
+  }, []);
+
+  // Login with Google credential
+  const login = useCallback(async (credential: string) => {
+    try {
+      const response = await fetch('/api/auth/google-signin', {
+        method: 'POST',
+        credentials: 'include', // Include cookies
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ credential }),
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Login failed');
+      }
+
+      const data = await response.json();
+      
+      if (data.success && data.user) {
+        setUser(data.user);
+        setCsrfToken(data.csrfToken);
+      } else {
+        throw new Error('Invalid response from server');
+      }
+    } catch (error) {
+      console.error('[Auth] Login failed:', error);
       throw error;
     }
-  };
-
-  // Logout function
-  const logout = useCallback(() => {
-    // Clear session
-    clearSession();
-    
-    // Clear state
-    setUser(null);
-    setLastValidated(null);
   }, []);
 
-  // Get session token (for API calls)
-  const getSessionToken = useCallback(() => {
-    return getStoredSessionToken();
-  }, []);
+  // Logout
+  const logout = useCallback(async () => {
+    try {
+      await fetch('/api/auth/logout', {
+        method: 'POST',
+        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(csrfToken ? { 'X-CSRF-Token': csrfToken } : {}),
+        },
+      });
+    } catch (error) {
+      console.error('[Auth] Logout error:', error);
+    } finally {
+      // Clear state regardless of API response
+      setUser(null);
+      setCsrfToken(null);
+    }
+  }, [csrfToken]);
 
   // Check for existing session on mount
   useEffect(() => {
     const checkSession = async () => {
       try {
-        const sessionToken = getStoredSessionToken();
-        
-        if (sessionToken) {
-          // Validate existing session
-          await validateSession();
-        }
+        await validateSession();
       } catch (error) {
-        console.error('Session check failed:', error);
-        logout();
+        console.error('[Auth] Session check failed:', error);
       } finally {
         setIsLoading(false);
       }
     };
 
     checkSession();
-  }, []); // Empty deps - only run on mount
+  }, [validateSession]);
 
   // Set up periodic validation (every 5 minutes when active)
   useEffect(() => {
@@ -124,18 +128,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const interval = setInterval(() => {
       // Only validate if tab is visible
       if (document.visibilityState === 'visible') {
-        console.log('Running periodic session validation...');
+        console.log('[Auth] Running periodic session validation...');
         validateSession();
       }
     }, checkInterval);
 
-    // Also validate when tab becomes visible
+    // Also validate when tab becomes visible after being hidden
     const handleVisibilityChange = () => {
       if (document.visibilityState === 'visible') {
-        const timeSinceLastValidation = Date.now() - (lastValidated || 0);
-        if (timeSinceLastValidation > checkInterval) {
-          validateSession();
-        }
+        validateSession();
       }
     };
 
@@ -145,17 +146,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       clearInterval(interval);
       document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
-  }, [user, lastValidated, validateSession]);
+  }, [user, validateSession]);
 
   const value: AuthContextType = {
     user,
+    csrfToken,
     isLoading,
-    isValidating,
-    lastValidated,
     login,
     logout,
     validateSession,
-    getSessionToken
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

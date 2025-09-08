@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React from 'react';
 import { Navigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 
@@ -7,17 +7,7 @@ interface ProtectedRouteProps {
 }
 
 export function ProtectedRoute({ children }: ProtectedRouteProps) {
-  const { user, isLoading, lastValidated, validateSession } = useAuth();
-
-  useEffect(() => {
-    // Check if validation is needed (more than 30 minutes since last check)
-    if (user && lastValidated) {
-      const thirtyMinutesAgo = Date.now() - (30 * 60 * 1000);
-      if (lastValidated < thirtyMinutesAgo) {
-        validateSession();
-      }
-    }
-  }, [user, lastValidated, validateSession]);
+  const { user, isLoading } = useAuth();
 
   if (isLoading) {
     return (
