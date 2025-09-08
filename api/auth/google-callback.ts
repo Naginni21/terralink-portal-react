@@ -43,11 +43,21 @@ export default async function handler(
       return res.status(500).json({ error: 'Server configuration error' });
     }
 
+    // Use the redirect_uri from the request or default to production URL
+    const finalRedirectUri = redirect_uri || 'https://terralink-portal.vercel.app/signin';
+    
+    console.log('OAuth Exchange Debug:', {
+      codePrefix: code.substring(0, 20) + '...',
+      redirectUri: finalRedirectUri,
+      clientIdPrefix: googleClientId.substring(0, 20) + '...',
+      hasClientSecret: !!googleClientSecret
+    });
+
     // Initialize OAuth2 client with CLIENT SECRET
     const oauth2Client = new OAuth2Client(
       googleClientId,
       googleClientSecret,
-      redirect_uri || 'https://terralink-portal.vercel.app/signin'
+      finalRedirectUri
     );
 
     // Exchange authorization code for tokens
@@ -56,9 +66,28 @@ export default async function handler(
     try {
       const { tokens: exchangedTokens } = await oauth2Client.getToken(code);
       tokens = exchangedTokens;
-    } catch (error) {
-      console.error('Failed to exchange authorization code:', error);
-      return res.status(401).json({ error: 'Invalid authorization code' });
+    } catch (error: any) {
+      console.error('Failed to exchange authorization code:', {
+        error: error.message,
+        code: error.code,
+        details: error.response?.data || error
+      });
+      
+      // Provide more specific error message
+      let errorMessage = 'Invalid authorization code';
+      if (error.message?.includes('invalid_grant')) {
+        errorMessage = 'Authorization code expired or already used';
+      } else if (error.message?.includes('redirect_uri_mismatch')) {
+        errorMessage = 'Redirect URI mismatch - check Google Console configuration';
+      }
+      
+      return res.status(401).json({ 
+        error: errorMessage,
+        debug: process.env.NODE_ENV === 'development' ? {
+          originalError: error.message,
+          redirectUri: finalRedirectUri
+        } : undefined
+      });
     }
 
     if (!tokens.id_token) {

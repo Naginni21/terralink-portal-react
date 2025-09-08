@@ -24,11 +24,32 @@ export function SignIn() {
       hasToken: !!localStorage.getItem('sessionToken')
     });
     
+    // Check for OAuth errors first
+    const error = searchParams.get('error');
+    if (error) {
+      console.error('[OAuth] Error from Google:', error);
+      const errorDescription = searchParams.get('error_description');
+      setError(`OAuth error: ${error}${errorDescription ? ` - ${errorDescription}` : ''}`);
+      // Clear the URL params
+      window.history.replaceState({}, document.title, '/signin');
+      return;
+    }
+    
     // Check if we're returning from OAuth with a code
     const code = searchParams.get('code');
     if (code) {
+      // Check if we've already processed this code (browser back button issue)
+      const processedCode = sessionStorage.getItem('lastProcessedCode');
+      if (processedCode === code) {
+        console.log('[OAuth] Code already processed, ignoring duplicate');
+        setError('This authorization code was already used. Please sign in again.');
+        window.history.replaceState({}, document.title, '/signin');
+        return;
+      }
+      
       console.log('[OAuth] Found authorization code in URL');
       setStatus('Processing Google authentication...');
+      sessionStorage.setItem('lastProcessedCode', code);
       handleOAuthCallback(code);
     } else {
       console.log('[OAuth] No authorization code in URL');
