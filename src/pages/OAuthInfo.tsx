@@ -8,7 +8,7 @@ export function OAuthInfo() {
   
   const currentOrigin = window.location.origin;
   const redirectUri = `${currentOrigin}/signin`;
-  const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
+  const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID?.trim();
   
   return (
     <div className="min-h-screen bg-gray-50 p-4">

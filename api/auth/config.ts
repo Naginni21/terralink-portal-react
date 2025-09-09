@@ -152,7 +152,8 @@ export function isProduction(): boolean {
  * Get Google Client ID from environment
  */
 export function getGoogleClientId(): string | undefined {
-  return process.env.VITE_GOOGLE_CLIENT_ID || process.env.GOOGLE_CLIENT_ID;
+  const clientId = process.env.VITE_GOOGLE_CLIENT_ID || process.env.GOOGLE_CLIENT_ID;
+  return clientId ? clientId.trim() : undefined;
 }
 
 /**

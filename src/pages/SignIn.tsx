@@ -41,7 +41,7 @@ export function SignIn() {
     }
 
     const initializeGoogleSignIn = () => {
-      const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
+      const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID?.trim();
       
       if (!clientId) {
         setError('Google Client ID no configurado');
@@ -54,7 +54,7 @@ export function SignIn() {
         return;
       }
 
-      console.log('[Auth] Initializing Google Sign-In');
+      console.log('[Auth] Initializing Google Sign-In with redirect');
       
       try {
         window.google.accounts.id.initialize({
@@ -62,6 +62,8 @@ export function SignIn() {
           callback: handleCredentialResponse,
           auto_select: false,
           cancel_on_tap_outside: true,
+          ux_mode: 'redirect',
+          login_uri: window.location.origin + '/signin'
         });
 
         // Render the Google Sign-In button
@@ -77,12 +79,13 @@ export function SignIn() {
           }
         );
 
-        // Optional: Show One Tap prompt
-        window.google.accounts.id.prompt((notification: any) => {
-          if (notification.isNotDisplayed() || notification.isSkippedMoment()) {
-            console.log('[Auth] One Tap not displayed:', notification.getNotDisplayedReason());
-          }
-        });
+        // Check for redirect response
+        const urlParams = new URLSearchParams(window.location.search);
+        const credential = urlParams.get('credential');
+        if (credential) {
+          console.log('[Auth] Processing redirect credential');
+          handleCredentialResponse({ credential });
+        }
       } catch (err) {
         console.error('[Auth] Failed to initialize Google Sign-In:', err);
         setError('Error al inicializar Google Sign-In');
