@@ -40,6 +40,23 @@ export function SignIn() {
       return;
     }
 
+    // Check for error from callback
+    const urlParams = new URLSearchParams(window.location.search);
+    const errorParam = urlParams.get('error');
+    if (errorParam) {
+      const errorMessages: Record<string, string> = {
+        no_credential: 'No se recibió credencial de Google',
+        invalid_credential: 'Credencial de Google inválida',
+        invalid_payload: 'Datos de usuario inválidos',
+        email_not_verified: 'El email no está verificado',
+        domain_not_allowed: 'Dominio no autorizado',
+        authentication_failed: 'Error en la autenticación'
+      };
+      setError(errorMessages[errorParam] || 'Error al iniciar sesión');
+      // Clean up URL
+      window.history.replaceState({}, document.title, '/signin');
+    }
+
     const initializeGoogleSignIn = () => {
       const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID?.trim();
       
@@ -63,7 +80,7 @@ export function SignIn() {
           auto_select: false,
           cancel_on_tap_outside: true,
           ux_mode: 'redirect',
-          login_uri: window.location.origin + '/signin'
+          login_uri: window.location.origin + '/api/auth/google-callback'
         });
 
         // Render the Google Sign-In button
@@ -78,14 +95,6 @@ export function SignIn() {
             logo_alignment: 'left'
           }
         );
-
-        // Check for redirect response
-        const urlParams = new URLSearchParams(window.location.search);
-        const credential = urlParams.get('credential');
-        if (credential) {
-          console.log('[Auth] Processing redirect credential');
-          handleCredentialResponse({ credential });
-        }
       } catch (err) {
         console.error('[Auth] Failed to initialize Google Sign-In:', err);
         setError('Error al inicializar Google Sign-In');
