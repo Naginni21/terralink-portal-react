@@ -7,7 +7,7 @@ export function OAuthInfo() {
   const [showInstructions, setShowInstructions] = useState(false);
   
   const currentOrigin = window.location.origin;
-  const redirectUri = `${currentOrigin}/signin`;
+  const redirectUri = `${currentOrigin}/api/auth/google-callback`;
   const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID?.trim();
   
   return (
@@ -81,40 +81,29 @@ export function OAuthInfo() {
                 All these URIs should be in your Google Console:
               </p>
               <ul className="space-y-1 text-sm">
-                <li>• <code className="bg-white px-2 py-1 rounded">{redirectUri}</code> (Primary)</li>
-                {currentOrigin !== 'https://terralink-portal.vercel.app' && (
-                  <li>• <code className="bg-white px-2 py-1 rounded">https://terralink-portal.vercel.app/signin</code> (Production)</li>
-                )}
-                <li>• <code className="bg-white px-2 py-1 rounded">http://localhost:6001/signin</code> (Development)</li>
+                <li>• <code className="bg-white px-2 py-1 rounded">{redirectUri}</code> (Current)</li>
+                <li>• <code className="bg-white px-2 py-1 rounded">https://terralink-portal.vercel.app/api/auth/google-callback</code> (Production)</li>
+                <li>• <code className="bg-white px-2 py-1 rounded">https://terralink-portal-*.vercel.app/api/auth/google-callback</code> (Preview deployments)</li>
+                <li>• <code className="bg-white px-2 py-1 rounded">http://localhost:6001/api/auth/google-callback</code> (Development)</li>
               </ul>
             </div>
 
             <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
-              <h2 className="font-semibold mb-2">Test OAuth Flow</h2>
+              <h2 className="font-semibold mb-2">Important Note</h2>
               <p className="text-sm text-gray-600 mb-3">
-                Click the button below to test the OAuth flow with the current configuration:
+                This application uses Google Sign-In with redirect flow. The redirect URI must be exactly:
               </p>
-              <button
-                onClick={() => {
-                  const authUrl = `https://accounts.google.com/o/oauth2/v2/auth?` +
-                    `client_id=${clientId}&` +
-                    `redirect_uri=${encodeURIComponent(redirectUri)}&` +
-                    `response_type=code&` +
-                    `scope=${encodeURIComponent('openid email profile')}&` +
-                    `access_type=offline&` +
-                    `prompt=select_account`;
-                  
-                  console.log('[OAuth Test] Redirecting to:', authUrl);
-                  window.location.href = authUrl;
-                }}
-                disabled={!clientId}
-                className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                Test OAuth Login
-              </button>
+              <div className="bg-white border border-gray-300 rounded p-3 mb-3">
+                <code className="text-sm font-mono break-all text-red-600">
+                  {redirectUri}
+                </code>
+              </div>
+              <p className="text-sm text-gray-600">
+                ⚠️ Google requires this exact URI to be added to your OAuth 2.0 Client ID's "Authorized redirect URIs" in the Google Cloud Console.
+              </p>
               {!clientId && (
-                <p className="mt-2 text-sm text-red-600">
-                  Client ID is not configured. Check your environment variables.
+                <p className="mt-3 text-sm text-red-600">
+                  ⚠️ Client ID is not configured. Check your environment variables.
                 </p>
               )}
             </div>
