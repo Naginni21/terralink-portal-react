@@ -135,23 +135,12 @@ export function SignIn() {
             <div className="mt-4">
               <button
                 onClick={() => {
-                  const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
-                  if (!clientId) {
-                    setError('Google Client ID no configurado');
-                    return;
-                  }
-                  // Fallback to traditional OAuth flow if needed
-                  const authUrl = `https://accounts.google.com/o/oauth2/v2/auth?` +
-                    `client_id=${clientId}&` +
-                    `redirect_uri=${encodeURIComponent(window.location.origin + '/signin')}&` +
-                    `response_type=token&` +
-                    `scope=${encodeURIComponent('openid email profile')}&` +
-                    `prompt=select_account`;
-                  window.location.href = authUrl;
+                  // Force re-render the Google button
+                  window.location.reload();
                 }}
                 className="w-full text-center text-xs text-gray-500 hover:text-gray-700 underline"
               >
-                ¿Problemas para iniciar sesión? Click aquí
+                ¿Problemas para iniciar sesión? Click aquí para recargar
               </button>
             </div>
           )}

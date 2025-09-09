@@ -60,10 +60,10 @@ export function AuthTest() {
           addResult('Google Client Secret', 'error', 'Google Client Secret is NOT configured');
         }
         
-        if (env.hasJwtSecret) {
-          addResult('JWT Secret', 'success', 'JWT Secret is configured');
+        if (env.hasKvUrl) {
+          addResult('Vercel KV', 'success', 'Vercel KV is configured');
         } else {
-          addResult('JWT Secret', 'error', 'JWT Secret is NOT configured');
+          addResult('Vercel KV', 'warning', 'Vercel KV is NOT configured (using memory storage)');
         }
       }
     } catch (error) {
@@ -73,109 +73,98 @@ export function AuthTest() {
       });
     }
 
-    // Test 3: Check OAuth callback endpoint
+    // Test 3: Check Google Sign-In endpoint
     try {
-      const response = await fetch('/api/auth/google-callback', {
+      const response = await fetch('/api/auth/google-signin', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ code: 'test_code' })
+        body: JSON.stringify({ credential: 'test_credential' })
       });
       
-      // We expect this to fail with 401 (invalid code) but it should be accessible
+      // We expect this to fail with 401 (invalid credential) but it should be accessible
       if (response.status === 401 || response.status === 400) {
-        addResult('OAuth Callback Endpoint', 'success', {
-          message: 'OAuth callback endpoint is accessible',
+        addResult('Google Sign-In Endpoint', 'success', {
+          message: 'Google Sign-In endpoint is accessible',
           status: response.status,
           statusText: response.statusText
         });
       } else if (response.status === 404) {
-        addResult('OAuth Callback Endpoint', 'error', {
-          message: 'OAuth callback endpoint NOT FOUND - API routing issue',
+        addResult('Google Sign-In Endpoint', 'error', {
+          message: 'Google Sign-In endpoint NOT FOUND - API routing issue',
           status: response.status
         });
       } else {
         const data = await response.text();
-        addResult('OAuth Callback Endpoint', 'warning', {
-          message: 'Unexpected response from OAuth endpoint',
+        addResult('Google Sign-In Endpoint', 'warning', {
+          message: 'Unexpected response from Sign-In endpoint',
           status: response.status,
           data
         });
       }
     } catch (error) {
-      addResult('OAuth Callback Endpoint', 'error', {
-        message: 'Failed to reach OAuth callback endpoint',
+      addResult('Google Sign-In Endpoint', 'error', {
+        message: 'Failed to reach Google Sign-In endpoint',
         error: error instanceof Error ? error.message : 'Unknown error'
       });
     }
 
-    // Test 4: Check validation endpoint
+    // Test 4: Check session endpoint
     try {
-      const response = await fetch('/api/auth/validate', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ token: 'test_token' })
+      const response = await fetch('/api/auth/session', {
+        method: 'GET',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' }
       });
       
-      if (response.status === 200 || response.status === 401 || response.status === 403) {
-        addResult('Validation Endpoint', 'success', {
-          message: 'Validation endpoint is accessible',
+      if (response.status === 200 || response.status === 401) {
+        addResult('Session Endpoint', 'success', {
+          message: 'Session endpoint is accessible',
           status: response.status
         });
       } else if (response.status === 404) {
-        addResult('Validation Endpoint', 'error', {
-          message: 'Validation endpoint NOT FOUND - API routing issue',
+        addResult('Session Endpoint', 'error', {
+          message: 'Session endpoint NOT FOUND - API routing issue',
           status: response.status
         });
       } else {
-        addResult('Validation Endpoint', 'warning', {
-          message: 'Unexpected response from validation endpoint',
+        addResult('Session Endpoint', 'warning', {
+          message: 'Unexpected response from session endpoint',
           status: response.status
         });
       }
     } catch (error) {
-      addResult('Validation Endpoint', 'error', {
-        message: 'Failed to reach validation endpoint',
+      addResult('Session Endpoint', 'error', {
+        message: 'Failed to reach session endpoint',
         error: error instanceof Error ? error.message : 'Unknown error'
       });
     }
 
-    // Test 5: Check current session
-    const sessionToken = localStorage.getItem('sessionToken');
-    if (sessionToken) {
-      addResult('Session Token', 'success', {
-        message: 'Session token found in localStorage',
-        tokenLength: sessionToken.length,
-        tokenPreview: sessionToken.substring(0, 20) + '...'
+    // Test 5: Check current session via cookies
+    try {
+      const response = await fetch('/api/auth/session', {
+        method: 'GET',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' }
       });
       
-      // Try to validate it
-      try {
-        const response = await fetch('/api/auth/validate', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ token: sessionToken })
+      const data = await response.json();
+      if (data.authenticated) {
+        addResult('Session Cookie', 'success', {
+          message: 'Session cookie is valid',
+          user: data.user,
+          csrfToken: data.csrfToken ? 'Present' : 'Missing'
         });
-        
-        const data = await response.json();
-        if (data.valid) {
-          addResult('Session Validation', 'success', {
-            message: 'Session is valid',
-            user: data.user
-          });
-        } else {
-          addResult('Session Validation', 'warning', {
-            message: 'Session is invalid or expired',
-            reason: data.reason
-          });
-        }
-      } catch (error) {
-        addResult('Session Validation', 'error', {
-          message: 'Failed to validate session',
-          error: error instanceof Error ? error.message : 'Unknown error'
+      } else {
+        addResult('Session Cookie', 'warning', {
+          message: 'No valid session cookie found',
+          authenticated: false
         });
       }
-    } else {
-      addResult('Session Token', 'warning', 'No session token found in localStorage');
+    } catch (error) {
+      addResult('Session Cookie', 'error', {
+        message: 'Failed to check session',
+        error: error instanceof Error ? error.message : 'Unknown error'
+      });
     }
 
     // Test 6: Check browser info
