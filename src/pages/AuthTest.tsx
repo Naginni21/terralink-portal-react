@@ -4,10 +4,17 @@ import { ArrowLeft, CheckCircle, XCircle, AlertCircle } from 'lucide-react';
 
 export function AuthTest() {
   const navigate = useNavigate();
-  const [testResults, setTestResults] = useState<any[]>([]);
+  interface TestResult {
+    test: string;
+    status: 'success' | 'error' | 'warning';
+    details: Record<string, unknown>;
+    timestamp: string;
+  }
+  
+  const [testResults, setTestResults] = useState<TestResult[]>([]);
   const [isRunning, setIsRunning] = useState(false);
 
-  const addResult = (test: string, status: 'success' | 'error' | 'warning', details: any) => {
+  const addResult = (test: string, status: 'success' | 'error' | 'warning', details: Record<string, unknown>) => {
     setTestResults(prev => [...prev, { test, status, details, timestamp: new Date().toISOString() }]);
   };
 
@@ -17,7 +24,7 @@ export function AuthTest() {
 
     // Test 1: Check if API is accessible
     try {
-      addResult('API Connectivity', 'success', 'Starting API connectivity test...');
+      addResult('API Connectivity', 'success', { message: 'Starting API connectivity test...' });
       const testResponse = await fetch('/api/test');
       const testData = await testResponse.json();
       
@@ -49,21 +56,21 @@ export function AuthTest() {
         const env = data.environment;
         
         if (env.hasGoogleClientId) {
-          addResult('Google Client ID', 'success', 'Google Client ID is configured');
+          addResult('Google Client ID', 'success', { message: 'Google Client ID is configured' });
         } else {
-          addResult('Google Client ID', 'error', 'Google Client ID is NOT configured');
+          addResult('Google Client ID', 'error', { message: 'Google Client ID is NOT configured' });
         }
         
         if (env.hasGoogleClientSecret) {
-          addResult('Google Client Secret', 'success', 'Google Client Secret is configured');
+          addResult('Google Client Secret', 'success', { message: 'Google Client Secret is configured' });
         } else {
-          addResult('Google Client Secret', 'error', 'Google Client Secret is NOT configured');
+          addResult('Google Client Secret', 'error', { message: 'Google Client Secret is NOT configured' });
         }
         
         if (env.hasKvUrl) {
-          addResult('Vercel KV', 'success', 'Vercel KV is configured');
+          addResult('Vercel KV', 'success', { message: 'Vercel KV is configured' });
         } else {
-          addResult('Vercel KV', 'warning', 'Vercel KV is NOT configured (using memory storage)');
+          addResult('Vercel KV', 'warning', { message: 'Vercel KV is NOT configured (using memory storage)' });
         }
       }
     } catch (error) {

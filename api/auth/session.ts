@@ -1,5 +1,6 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { kv } from '@vercel/kv';
+import { setCorsHeaders } from '../lib/cors';
 
 /**
  * Session Validation Endpoint
@@ -9,12 +10,8 @@ export default async function handler(
   req: VercelRequest,
   res: VercelResponse
 ) {
-  // Add CORS headers
-  const origin = req.headers.origin || 'https://terralink-portal.vercel.app';
-  res.setHeader('Access-Control-Allow-Origin', origin);
-  res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
-  res.setHeader('Access-Control-Allow-Credentials', 'true');
+  // Set secure CORS headers
+  setCorsHeaders(req, res);
 
   // Handle preflight
   if (req.method === 'OPTIONS') {
@@ -69,7 +66,12 @@ export default async function handler(
     }
 
     // Check if session is expired
-    const session = sessionData as any;
+    const session = sessionData as {
+      user: { email: string; name?: string; picture?: string };
+      csrfToken: string;
+      expiresAt: number;
+      lastActivity: number;
+    };
     if (session.expiresAt < Date.now()) {
       // Clean up expired session
       await kv.del(`session:${sessionId}`);
@@ -96,12 +98,12 @@ export default async function handler(
       csrfToken: session.csrfToken
     });
 
-  } catch (error: any) {
+  } catch (error) {
     console.error('Session validation error:', error);
     return res.status(500).json({ 
       error: 'Session validation failed',
       authenticated: false,
-      details: process.env.NODE_ENV === 'development' ? error.message : undefined
+      details: process.env.NODE_ENV === 'development' ? (error instanceof Error ? error.message : 'Unknown error') : undefined
     });
   }
 }

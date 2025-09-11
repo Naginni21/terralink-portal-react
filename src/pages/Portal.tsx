@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react';
-import { useAuth } from '../contexts/AuthContext';
+import { useState, useEffect, useCallback } from 'react';
+import { useAuth } from '../hooks/useAuth';
 import { useNavigate } from 'react-router-dom';
 import { Navbar } from '../components/Layout/Navbar';
 import { ListView } from '../components/Portal/ListView';
@@ -19,23 +19,21 @@ export function Portal() {
     }
   }, [user, navigate]);
 
-  if (!user) {
-    return null;
-  }
-
-  const userRole = user.role;
+  const userRole = user?.role || 'usuario';
 
   const getAccessibleApps = (): Application[] => {
     return APPLICATIONS_DATA.filter(app => app.roles.includes(userRole));
   };
 
   const handleLogout = () => {
-    logAccess('logout', user.email);
+    if (user) {
+      logAccess('logout', user.email);
+    }
     logout();
     navigate('/signin');
   };
 
-  const logAccess = (action: string, userEmail: string, appName: string | null = null) => {
+  const logAccess = useCallback((action: string, userEmail: string, appName: string | null = null) => {
     const newLog: AccessLog = {
       timestamp: new Date().toISOString(),
       user: userEmail,
@@ -45,14 +43,16 @@ export function Portal() {
     };
     
     setAccessLogs(prev => [newLog, ...prev].slice(0, 100));
-  };
+  }, []);
 
   const handleAppClick = async (app: Application) => {
-    logAccess('app_access', user.email, app.name);
+    if (user) {
+      logAccess('app_access', user.email, app.name);
+    }
     
     if (app.url) {
-      // For now, open apps directly without token
-      // TODO: Implement app token generation with new auth architecture if needed
+      // Apps are now authenticated via session cookies (httpOnly)
+      // The browser automatically includes cookies with same-origin requests
       window.open(app.url, '_blank');
     } else {
       alert(`La aplicación "${app.name}" estará disponible próximamente`);
@@ -93,9 +93,14 @@ export function Portal() {
 
   useEffect(() => {
     // Log login on mount
-    logAccess('login', user.email);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user.email]);
+    if (user) {
+      logAccess('login', user.email);
+    }
+  }, [user, logAccess]);
+
+  if (!user) {
+    return null;
+  }
 
   return (
     <div className="min-h-screen bg-gray-50">

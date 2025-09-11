@@ -88,7 +88,7 @@ export function ListView({ applications, userRole, onAppClick }: ListViewProps) 
           
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {applications.map((app) => {
-              const IconComponent = Icons[app.iconName as keyof typeof Icons] as React.ComponentType<any>;
+              const IconComponent = Icons[app.iconName as keyof typeof Icons] as React.ComponentType<{ className?: string; size?: number }>;
               return (
                 <div
                   key={app.id}

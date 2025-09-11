@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useAuth } from '../contexts/AuthContext';
+import { useAuth } from '../hooks/useAuth';
 import { Shield, Users, Activity, Globe, LogOut, RefreshCw, Trash2, UserCheck, Clock, Monitor } from 'lucide-react';
 
 interface User {
@@ -19,7 +19,7 @@ interface ActivityLog {
   appName: string;
   action: string;
   timestamp: string;
-  metadata?: any;
+  metadata?: Record<string, unknown>;
 }
 
 interface Domain {
@@ -46,11 +46,7 @@ const Admin: React.FC = () => {
     }
   }, [user, navigate]);
 
-  useEffect(() => {
-    loadData();
-  }, [activeTab]);
-
-  const loadData = async () => {
+  const loadData = useCallback(async () => {
     setLoading(true);
     const token = localStorage.getItem('auth_token');
     
@@ -86,12 +82,16 @@ const Admin: React.FC = () => {
           setDomains(data.domains);
         }
       }
-    } catch (error) {
-      console.error('Error loading data:', error);
+    } catch {
+      // Error loading data
     }
     
     setLoading(false);
-  };
+  }, [activeTab]);
+
+  useEffect(() => {
+    loadData();
+  }, [loadData]);
 
   const updateUserRole = async (email: string, newRole: string) => {
     const token = localStorage.getItem('auth_token');
@@ -109,8 +109,8 @@ const Admin: React.FC = () => {
       if (response.ok) {
         loadData();
       }
-    } catch (error) {
-      console.error('Error updating user role:', error);
+    } catch {
+      // Error updating user role
     }
   };
 
@@ -132,8 +132,8 @@ const Admin: React.FC = () => {
       if (response.ok) {
         loadData();
       }
-    } catch (error) {
-      console.error('Error revoking access:', error);
+    } catch {
+      // Error revoking access
     }
   };
 
@@ -156,8 +156,8 @@ const Admin: React.FC = () => {
         setNewDomain('');
         loadData();
       }
-    } catch (error) {
-      console.error('Error adding domain:', error);
+    } catch {
+      // Error adding domain
     }
   };
 
@@ -179,8 +179,8 @@ const Admin: React.FC = () => {
       if (response.ok) {
         loadData();
       }
-    } catch (error) {
-      console.error('Error removing domain:', error);
+    } catch {
+      // Error removing domain
     }
   };
 
@@ -199,8 +199,8 @@ const Admin: React.FC = () => {
         setActivities(data.activities);
         setActiveTab('activity');
       }
-    } catch (error) {
-      console.error('Error loading user activities:', error);
+    } catch {
+      // Error loading user activities
     }
   };
 

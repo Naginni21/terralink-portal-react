@@ -1,36 +1,49 @@
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Zap } from 'lucide-react';
-import { useAuth } from '../contexts/AuthContext';
+import { useAuth } from '../hooks/useAuth';
 
 declare global {
   interface Window {
-    google: any;
+    google: {
+      accounts: {
+        id: {
+          initialize: (config: {
+            client_id: string;
+            ux_mode?: string;
+            login_uri?: string;
+            auto_select?: boolean;
+            cancel_on_tap_outside?: boolean;
+            state_cookie_domain?: string;
+            login_hint?: string;
+            hd?: string;
+          }) => void;
+          renderButton: (element: HTMLElement | null, options?: {
+            type?: string;
+            theme?: string;
+            size?: string;
+            text?: string;
+            shape?: string;
+            logo_alignment?: string;
+            width?: number;
+            locale?: string;
+          }) => void;
+          prompt: () => void;
+          disableAutoSelect: () => void;
+        };
+      };
+    };
   }
 }
 
 export function SignIn() {
   const navigate = useNavigate();
-  const { login, user } = useAuth();
+  const { user } = useAuth();
   const [error, setError] = useState<string | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
+  const [isLoading] = useState(false);
 
-  // Handle Google Sign-In response
-  const handleCredentialResponse = useCallback(async (response: any) => {
-    console.log('[Auth] Received Google credential');
-    setIsLoading(true);
-    setError(null);
-
-    try {
-      await login(response.credential);
-      console.log('[Auth] Login successful, redirecting...');
-      navigate('/', { replace: true });
-    } catch (err) {
-      console.error('[Auth] Login failed:', err);
-      setError(err instanceof Error ? err.message : 'Error al iniciar sesión');
-      setIsLoading(false);
-    }
-  }, [login, navigate]);
+  // Note: Using redirect mode, so no callback needed
+  // The google-callback endpoint handles the authentication
 
   // Initialize Google Sign-In
   useEffect(() => {
@@ -66,17 +79,16 @@ export function SignIn() {
       }
 
       if (typeof window.google === 'undefined') {
-        console.log('[Auth] Waiting for Google SDK...');
+        // Waiting for Google SDK
         setTimeout(initializeGoogleSignIn, 100);
         return;
       }
 
-      console.log('[Auth] Initializing Google Sign-In with redirect');
+      // Initializing Google Sign-In with redirect
       
       try {
         window.google.accounts.id.initialize({
           client_id: clientId,
-          callback: handleCredentialResponse,
           auto_select: false,
           cancel_on_tap_outside: true,
           ux_mode: 'redirect',
@@ -89,21 +101,21 @@ export function SignIn() {
           { 
             theme: 'outline',
             size: 'large',
-            width: '100%',
+            width: 300,
             text: 'signin_with',
             shape: 'rectangular',
             logo_alignment: 'left'
           }
         );
-      } catch (err) {
-        console.error('[Auth] Failed to initialize Google Sign-In:', err);
+      } catch {
+        // Failed to initialize Google Sign-In
         setError('Error al inicializar Google Sign-In');
       }
     };
 
     // Wait for Google SDK to load
     initializeGoogleSignIn();
-  }, [user, navigate, handleCredentialResponse]);
+  }, [user, navigate]);
 
   return (
     <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">

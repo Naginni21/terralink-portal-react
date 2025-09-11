@@ -1,5 +1,6 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { kv } from '@vercel/kv';
+import { setCorsHeaders } from '../lib/cors';
 
 /**
  * Logout Endpoint
@@ -9,12 +10,8 @@ export default async function handler(
   req: VercelRequest,
   res: VercelResponse
 ) {
-  // Add CORS headers
-  const origin = req.headers.origin || 'https://terralink-portal.vercel.app';
-  res.setHeader('Access-Control-Allow-Origin', origin);
-  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, X-CSRF-Token');
-  res.setHeader('Access-Control-Allow-Credentials', 'true');
+  // Set secure CORS headers
+  setCorsHeaders(req, res);
 
   // Handle preflight
   if (req.method === 'OPTIONS') {
@@ -33,11 +30,23 @@ export default async function handler(
     if (sessionMatch) {
       const sessionId = sessionMatch[1];
 
-      // Get session data to log the logout
+      // Get session data to validate CSRF and log the logout
       try {
-        const sessionData = await kv.get(`session:${sessionId}`) as any;
+        const sessionData = await kv.get(`session:${sessionId}`) as {
+          user: { email: string; name?: string };
+          csrfToken?: string;
+          createdAt: string;
+        } | null;
         
         if (sessionData) {
+          // Validate CSRF token if present in session
+          if (sessionData.csrfToken) {
+            const providedToken = req.headers['x-csrf-token'] as string;
+            if (!providedToken || providedToken !== sessionData.csrfToken) {
+              return res.status(403).json({ error: 'Invalid CSRF token' });
+            }
+          }
+          
           // Remove session from KV
           await kv.del(`session:${sessionId}`);
           
@@ -65,14 +74,21 @@ export default async function handler(
     const cookieOptions = [
       'terralink_session=',
       'HttpOnly',
-      'Secure',
-      'SameSite=Lax',
-      'Max-Age=0', // Expire immediately
-      'Path=/'
+      'Path=/',
+      'Max-Age=0' // Expire immediately
     ];
-
-    if (isProduction) {
-      cookieOptions.push('Domain=.vercel.app');
+    
+    // Only add Secure flag in production or if using HTTPS
+    if (isProduction || req.headers['x-forwarded-proto'] === 'https') {
+      cookieOptions.push('Secure');
+    }
+    
+    cookieOptions.push('SameSite=Lax');
+    
+    // Allow custom domain via environment variable
+    const cookieDomain = process.env.COOKIE_DOMAIN;
+    if (isProduction && cookieDomain) {
+      cookieOptions.push(`Domain=${cookieDomain}`);
     }
 
     res.setHeader('Set-Cookie', cookieOptions.join('; '));
@@ -82,11 +98,11 @@ export default async function handler(
       message: 'Logged out successfully'
     });
 
-  } catch (error: any) {
+  } catch (error) {
     console.error('Logout error:', error);
     return res.status(500).json({ 
       error: 'Logout failed',
-      details: process.env.NODE_ENV === 'development' ? error.message : undefined
+      details: process.env.NODE_ENV === 'development' ? (error instanceof Error ? error.message : 'Unknown error') : undefined
     });
   }
 }

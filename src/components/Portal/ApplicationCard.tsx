@@ -34,8 +34,8 @@ export function ApplicationCard({ app, onAppClick }: ApplicationCardProps) {
             }
           })
         });
-      } catch (error) {
-        console.error('Failed to track activity:', error);
+      } catch {
+        // Activity tracking failed silently
       }
     }
     

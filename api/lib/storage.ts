@@ -29,7 +29,7 @@ export interface Activity {
   appId: string;
   appName: string;
   action: string;
-  metadata?: any;
+  metadata?: Record<string, unknown>;
   timestamp: string;
   userRole: string;
   userDomain: string;
@@ -48,7 +48,7 @@ class InMemoryStorage {
   private sessions: Map<string, Session> = new Map();
   private activities: Map<string, Activity[]> = new Map();
   private domains: Set<string> = new Set(['terralink.com.br', 'example.com']);
-  private domainSettings: Map<string, any> = new Map();
+  private domainSettings: Map<string, { addedAt: string; addedBy: string; userCount?: number }> = new Map();
 
   // Initialize with environment variables
   constructor() {

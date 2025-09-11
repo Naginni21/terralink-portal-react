@@ -160,6 +160,13 @@ export function getGoogleClientId(): string | undefined {
  * Generate a cryptographically secure nonce
  */
 export function generateNonce(): string {
+  if (globalThis.crypto && globalThis.crypto.getRandomValues) {
+    const bytes = new Uint8Array(AUTH_CONFIG.NONCE_LENGTH);
+    globalThis.crypto.getRandomValues(bytes);
+    return Array.from(bytes, byte => byte.toString(16).padStart(2, '0')).join('');
+  }
+  // Server-side fallback using Node.js crypto
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
   const crypto = require('crypto');
   return crypto.randomBytes(AUTH_CONFIG.NONCE_LENGTH).toString('hex');
 }
@@ -168,12 +175,12 @@ export function generateNonce(): string {
  * Constant-time string comparison to prevent timing attacks
  */
 export function secureCompare(a: string, b: string): boolean {
-  const crypto = require('crypto');
-  
   if (a.length !== b.length) {
     return false;
   }
   
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const crypto = require('crypto');
   return crypto.timingSafeEqual(
     Buffer.from(a),
     Buffer.from(b)

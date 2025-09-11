@@ -7,9 +7,19 @@ const allowedDomains = new Set([
   'example.com' // For testing
 ]);
 
-const domainSettings: Map<string, any> = new Map();
+interface DomainSettings {
+  addedAt: string;
+  addedBy: string;
+  userCount?: number;
+}
 
-const JWT_SECRET = process.env.JWT_SECRET || 'your-jwt-secret-key-change-in-production';
+const domainSettings: Map<string, DomainSettings> = new Map();
+
+const JWT_SECRET = process.env.JWT_SECRET;
+
+if (!JWT_SECRET) {
+  throw new Error('JWT_SECRET environment variable is required');
+}
 
 interface DecodedToken {
   email: string;
@@ -39,7 +49,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   try {
     decoded = jwt.verify(token, JWT_SECRET) as DecodedToken;
-  } catch (error) {
+  } catch {
     return res.status(401).json({ error: 'Invalid token' });
   }
 
@@ -76,7 +86,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
 
     // Validate domain format
-    const domainRegex = /^[a-z0-9]+([\-\.]{1}[a-z0-9]+)*\.[a-z]{2,}$/i;
+    const domainRegex = /^[a-z0-9]+([-.]a-z0-9]+)*\.[a-z]{2,}$/i;
     if (!domainRegex.test(domain)) {
       return res.status(400).json({ error: 'Invalid domain format' });
     }

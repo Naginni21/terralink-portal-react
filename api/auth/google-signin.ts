@@ -2,7 +2,8 @@ import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { OAuth2Client } from 'google-auth-library';
 import { kv } from '@vercel/kv';
 import crypto from 'crypto';
-import { getGoogleClientId, getAllowedDomains, getAdminEmails } from './config.js';
+import { getGoogleClientId, getAllowedDomains, getAdminEmails } from './config';
+import { setCorsHeaders } from '../lib/cors';
 
 /**
  * Google Sign-In Handler
@@ -13,12 +14,8 @@ export default async function handler(
   req: VercelRequest,
   res: VercelResponse
 ) {
-  // Add CORS headers
-  const origin = req.headers.origin || 'https://terralink-portal.vercel.app';
-  res.setHeader('Access-Control-Allow-Origin', origin);
-  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
-  res.setHeader('Access-Control-Allow-Credentials', 'true');
+  // Set secure CORS headers
+  setCorsHeaders(req, res);
 
   // Handle preflight
   if (req.method === 'OPTIONS') {
@@ -82,7 +79,7 @@ export default async function handler(
 
     // Check if user is admin
     const adminEmails = getAdminEmails();
-    const role = adminEmails.includes(user.email.toLowerCase()) ? 'admin' : 'user';
+    const role = adminEmails.includes(user.email.toLowerCase()) ? 'admin' : 'usuario';
 
     // Generate session ID
     const sessionId = crypto.randomBytes(32).toString('hex');
@@ -137,14 +134,21 @@ export default async function handler(
     const cookieOptions = [
       `terralink_session=${sessionId}`,
       'HttpOnly',
-      'Secure',
-      'SameSite=Lax',
-      `Max-Age=${30 * 24 * 60 * 60}`, // 30 days
       'Path=/'
     ];
-
-    if (isProduction) {
-      cookieOptions.push('Domain=.vercel.app');
+    
+    // Only add Secure flag in production or if using HTTPS
+    if (isProduction || req.headers['x-forwarded-proto'] === 'https') {
+      cookieOptions.push('Secure');
+    }
+    
+    cookieOptions.push('SameSite=Lax');
+    cookieOptions.push(`Max-Age=${30 * 24 * 60 * 60}`); // 30 days
+    
+    // Allow custom domain via environment variable
+    const cookieDomain = process.env.COOKIE_DOMAIN;
+    if (isProduction && cookieDomain) {
+      cookieOptions.push(`Domain=${cookieDomain}`);
     }
 
     res.setHeader('Set-Cookie', cookieOptions.join('; '));
@@ -162,11 +166,11 @@ export default async function handler(
       csrfToken
     });
 
-  } catch (error: any) {
+  } catch (error) {
     console.error('Sign-in error:', error);
     return res.status(500).json({ 
       error: 'Authentication failed',
-      details: process.env.NODE_ENV === 'development' ? error.message : undefined
+      details: process.env.NODE_ENV === 'development' ? (error instanceof Error ? error.message : 'Unknown error') : undefined
     });
   }
 }

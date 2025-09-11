@@ -1,21 +1,66 @@
 import { VercelRequest, VercelResponse } from '@vercel/node';
 
-// CORS configuration for API endpoints
-export function setCorsHeaders(req: VercelRequest, res: VercelResponse) {
-  // In production, you might want to restrict origins
-  const allowedOrigins = process.env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['*'];
+/**
+ * Get allowed origins from environment or use secure defaults
+ */
+function getAllowedOrigins(): string[] {
+  // Parse from environment variable
+  const envOrigins = process.env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()).filter(Boolean) || [];
   
-  const origin = req.headers.origin || '*';
+  // Default allowed origins
+  const defaultOrigins = [
+    'https://terralink-portal.vercel.app',
+    'https://terralink-portal-react.vercel.app'
+  ];
   
-  // Check if origin is allowed
-  if (allowedOrigins.includes('*') || allowedOrigins.includes(origin)) {
-    res.setHeader('Access-Control-Allow-Origin', origin);
-  } else {
-    // For production, only allow specific origins
-    res.setHeader('Access-Control-Allow-Origin', allowedOrigins[0]);
+  // In development, also allow localhost
+  if (process.env.NODE_ENV !== 'production') {
+    defaultOrigins.push(
+      'http://localhost:6001',
+      'http://localhost:5173',
+      'http://localhost:3000'
+    );
   }
   
-  res.setHeader('Access-Control-Allow-Credentials', 'true');
+  return [...new Set([...defaultOrigins, ...envOrigins])];
+}
+
+/**
+ * Validate origin against whitelist
+ */
+function isOriginAllowed(origin: string | undefined): boolean {
+  if (!origin) return false;
+  
+  const allowedOrigins = getAllowedOrigins();
+  
+  // Check exact match
+  if (allowedOrigins.includes(origin)) {
+    return true;
+  }
+  
+  // In preview environments, allow Vercel preview URLs
+  if (process.env.VERCEL_ENV === 'preview' && origin.includes('.vercel.app')) {
+    return true;
+  }
+  
+  return false;
+}
+
+// CORS configuration for API endpoints
+export function setCorsHeaders(req: VercelRequest, res: VercelResponse) {
+  const origin = req.headers.origin;
+  
+  // Only set origin header if it's allowed
+  if (isOriginAllowed(origin)) {
+    res.setHeader('Access-Control-Allow-Origin', origin!);
+    res.setHeader('Access-Control-Allow-Credentials', 'true');
+  } else if (process.env.NODE_ENV !== 'production') {
+    // In development only, be more permissive
+    res.setHeader('Access-Control-Allow-Origin', origin || 'http://localhost:6001');
+    res.setHeader('Access-Control-Allow-Credentials', 'true');
+  }
+  // In production, if origin is not allowed, don't set CORS headers
+  
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
   res.setHeader(
     'Access-Control-Allow-Headers',

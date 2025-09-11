@@ -1,17 +1,7 @@
-import { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import type { ReactNode } from 'react';
 import type { User } from '../types/index';
-
-interface AuthContextType {
-  user: User | null;
-  csrfToken: string | null;
-  isLoading: boolean;
-  login: (credential: string) => Promise<void>;
-  logout: () => Promise<void>;
-  validateSession: () => Promise<boolean>;
-}
-
-const AuthContext = createContext<AuthContextType | undefined>(undefined);
+import { AuthContext, type AuthContextType } from './AuthContextDefinition';
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
@@ -46,8 +36,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setUser(null);
       setCsrfToken(null);
       return false;
-    } catch (error) {
-      console.error('[Auth] Session validation failed:', error);
+    } catch {
+      // Session validation error
       setUser(null);
       setCsrfToken(null);
       return false;
@@ -56,32 +46,27 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   // Login with Google credential
   const login = useCallback(async (credential: string) => {
-    try {
-      const response = await fetch('/api/auth/google-signin', {
-        method: 'POST',
-        credentials: 'include', // Include cookies
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ credential }),
-      });
+    const response = await fetch('/api/auth/google-signin', {
+      method: 'POST',
+      credentials: 'include', // Include cookies
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ credential }),
+    });
 
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.error || 'Login failed');
-      }
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || 'Login failed');
+    }
 
-      const data = await response.json();
-      
-      if (data.success && data.user) {
-        setUser(data.user);
-        setCsrfToken(data.csrfToken);
-      } else {
-        throw new Error('Invalid response from server');
-      }
-    } catch (error) {
-      console.error('[Auth] Login failed:', error);
-      throw error;
+    const data = await response.json();
+    
+    if (data.success && data.user) {
+      setUser(data.user);
+      setCsrfToken(data.csrfToken);
+    } else {
+      throw new Error('Invalid response from server');
     }
   }, []);
 
@@ -96,8 +81,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           ...(csrfToken ? { 'X-CSRF-Token': csrfToken } : {}),
         },
       });
-    } catch (error) {
-      console.error('[Auth] Logout error:', error);
+    } catch {
+      // Logout error - continue with cleanup
     } finally {
       // Clear state regardless of API response
       setUser(null);
@@ -110,8 +95,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const checkSession = async () => {
       try {
         await validateSession();
-      } catch (error) {
-        console.error('[Auth] Session check failed:', error);
+      } catch {
+        // Session check error
       } finally {
         setIsLoading(false);
       }
@@ -129,7 +114,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const interval = setInterval(() => {
       // Only validate if tab is visible
       if (document.visibilityState === 'visible') {
-        console.log('[Auth] Running periodic session validation...');
         validateSession();
       }
     }, checkInterval);
@@ -161,10 +145,4 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
 
-export const useAuth = () => {
-  const context = useContext(AuthContext);
-  if (context === undefined) {
-    throw new Error('useAuth must be used within an AuthProvider');
-  }
-  return context;
-};
+// Hook moved to separate file - import from src/hooks/useAuth

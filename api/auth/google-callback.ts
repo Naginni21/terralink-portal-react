@@ -2,7 +2,7 @@ import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { OAuth2Client } from 'google-auth-library';
 import { kv } from '@vercel/kv';
 import crypto from 'crypto';
-import { getGoogleClientId, getAllowedDomains, getAdminEmails } from './config.js';
+import { getGoogleClientId, getAllowedDomains, getAdminEmails } from './config';
 
 /**
  * Google OAuth Callback Handler
@@ -72,7 +72,7 @@ export default async function handler(
 
     // Check if user is admin
     const adminEmails = getAdminEmails();
-    const role = adminEmails.includes(user.email.toLowerCase()) ? 'admin' : 'user';
+    const role = adminEmails.includes(user.email.toLowerCase()) ? 'admin' : 'usuario';
 
     // Generate session ID
     const sessionId = crypto.randomBytes(32).toString('hex');
@@ -127,14 +127,21 @@ export default async function handler(
     const cookieOptions = [
       `terralink_session=${sessionId}`,
       'HttpOnly',
-      'Secure',
-      'SameSite=Lax',
-      `Max-Age=${30 * 24 * 60 * 60}`, // 30 days
       'Path=/'
     ];
-
-    if (isProduction) {
-      cookieOptions.push('Domain=.vercel.app');
+    
+    // Only add Secure flag in production or if using HTTPS
+    if (isProduction || req.headers['x-forwarded-proto'] === 'https') {
+      cookieOptions.push('Secure');
+    }
+    
+    cookieOptions.push('SameSite=Lax');
+    cookieOptions.push(`Max-Age=${30 * 24 * 60 * 60}`); // 30 days
+    
+    // Allow custom domain via environment variable
+    const cookieDomain = process.env.COOKIE_DOMAIN;
+    if (isProduction && cookieDomain) {
+      cookieOptions.push(`Domain=${cookieDomain}`);
     }
 
     res.setHeader('Set-Cookie', cookieOptions.join('; '));
@@ -142,7 +149,7 @@ export default async function handler(
     // Redirect to home page after successful login
     return res.redirect(302, '/');
 
-  } catch (error: any) {
+  } catch (error) {
     console.error('Sign-in callback error:', error);
     return res.redirect(302, '/signin?error=authentication_failed');
   }

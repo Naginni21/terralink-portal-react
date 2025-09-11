@@ -2,9 +2,25 @@ import { VercelRequest, VercelResponse } from '@vercel/node';
 import jwt from 'jsonwebtoken';
 
 // In-memory storage for demo (use database in production)
-const activities: Map<string, any[]> = new Map();
+interface Activity {
+  id: string;
+  userEmail: string;
+  appId: string;
+  appName: string;
+  action: string;
+  metadata: Record<string, unknown>;
+  timestamp: string;
+  userRole: string;
+  userDomain: string;
+}
 
-const JWT_SECRET = process.env.JWT_SECRET || 'your-jwt-secret-key-change-in-production';
+const activities: Map<string, Activity[]> = new Map();
+
+const JWT_SECRET = process.env.JWT_SECRET;
+
+if (!JWT_SECRET) {
+  throw new Error('JWT_SECRET environment variable is required');
+}
 
 interface DecodedToken {
   email: string;
@@ -34,7 +50,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   try {
     decoded = jwt.verify(token, JWT_SECRET) as DecodedToken;
-  } catch (error) {
+  } catch {
     return res.status(401).json({ error: 'Invalid token' });
   }
 

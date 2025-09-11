@@ -2,10 +2,40 @@ import { VercelRequest, VercelResponse } from '@vercel/node';
 import jwt from 'jsonwebtoken';
 
 // In-memory storage for demo (use database in production)
-const users: Map<string, any> = new Map();
-const sessions: Map<string, any> = new Map();
+interface UserData {
+  email?: string;
+  role?: string;
+  domain?: string;
+  lastLogin?: string;
+  updatedAt?: string;
+  updatedBy?: string;
+  revokedAt?: string;
+  revokedBy?: string;
+  createdAt?: string;
+}
 
-const JWT_SECRET = process.env.JWT_SECRET || 'your-jwt-secret-key-change-in-production';
+interface SessionData {
+  email: string;
+  role: string;
+  domain: string;
+  lastLogin?: string;
+  createdAt?: string;
+}
+
+interface UserWithSessions extends UserData {
+  email: string;
+  sessions: string[];
+  isActive: boolean;
+}
+
+const users: Map<string, UserData> = new Map();
+const sessions: Map<string, SessionData> = new Map();
+
+const JWT_SECRET = process.env.JWT_SECRET;
+
+if (!JWT_SECRET) {
+  throw new Error('JWT_SECRET environment variable is required');
+}
 
 interface DecodedToken {
   email: string;
@@ -15,10 +45,10 @@ interface DecodedToken {
 
 // Helper to get all user data
 function getAllUsersData() {
-  const allUsers: any[] = [];
+  const allUsers: UserWithSessions[] = [];
   
   // Collect users from sessions
-  sessions.forEach((session, sessionId) => {
+  sessions.forEach((session) => {
     const existingUser = allUsers.find(u => u.email === session.email);
     if (!existingUser) {
       allUsers.push({
@@ -77,7 +107,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   try {
     decoded = jwt.verify(token, JWT_SECRET) as DecodedToken;
-  } catch (error) {
+  } catch {
     return res.status(401).json({ error: 'Invalid token' });
   }
 
@@ -124,7 +154,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     users.set(email, userData);
 
     // Update all active sessions for this user
-    sessions.forEach((session, sessionId) => {
+    sessions.forEach((session) => {
       if (session.email === email) {
         session.role = role;
       }

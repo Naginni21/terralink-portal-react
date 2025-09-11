@@ -60,33 +60,42 @@ export function PortalGuard({
       }
 
       if (token) {
-        // Validate new token with API
+        // Validate token with session API
         try {
-          // TODO: Update for new cookie-based auth architecture
-          // For now, skip token validation
-          const response = { valid: false, user: null };
+          const response = await fetch('/api/auth/session', {
+            method: 'GET',
+            credentials: 'include',
+            headers: {
+              'Authorization': `Bearer ${token}`,
+              'Content-Type': 'application/json'
+            }
+          });
           
-          if (response.valid && response.user) {
-            // Store session
-            const session = {
-              user: response.user,
-              validatedAt: Date.now()
-            };
-            sessionStorage.setItem('portal_session', JSON.stringify(session));
-            
-            setUser(response.user);
-            setIsAuthenticated(true);
-            
-            // Clean URL - remove token
-            const cleanUrl = new URL(window.location.href);
-            cleanUrl.searchParams.delete('token');
-            window.history.replaceState({}, '', cleanUrl.toString());
+          if (response.ok) {
+            const data = await response.json();
+            if (data.authenticated && data.user) {
+              // Store session
+              const session = {
+                user: data.user,
+                validatedAt: Date.now()
+              };
+              sessionStorage.setItem('portal_session', JSON.stringify(session));
+              
+              setUser(data.user);
+              setIsAuthenticated(true);
+              
+              // Clean URL - remove token
+              const cleanUrl = new URL(window.location.href);
+              cleanUrl.searchParams.delete('token');
+              window.history.replaceState({}, '', cleanUrl.toString());
+            } else {
+              redirectToPortal();
+            }
           } else {
             // Invalid token - redirect to portal
             redirectToPortal();
           }
-        } catch (error) {
-          console.error('Token validation failed:', error);
+        } catch {
           redirectToPortal();
         }
       } else if (storedSession) {
@@ -104,7 +113,7 @@ export function PortalGuard({
     };
 
     validateAccess();
-  }, []);
+  }, [portalUrl]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Periodic session check (every 10 minutes by default)
   useEffect(() => {
@@ -114,25 +123,29 @@ export function PortalGuard({
       // Only check if tab is visible
       if (document.visibilityState === 'visible') {
         try {
-          // TODO: Update for new cookie-based auth architecture
-          // For now, skip session check
-          const response = { valid: true };
+          // Check session validity with API
+          const response = await fetch('/api/auth/session', {
+            method: 'GET',
+            credentials: 'include',
+            headers: {
+              'Content-Type': 'application/json'
+            }
+          });
           
-          if (!response.valid) {
+          if (!response.ok || !(await response.json()).authenticated) {
             // Session revoked - clear and redirect
             sessionStorage.removeItem('portal_session');
             alert('Your session has been revoked. Redirecting to portal...');
             redirectToPortal();
           }
-        } catch (error) {
-          console.error('Session check failed:', error);
+        } catch {
           // Don't redirect on network errors - allow offline work
         }
       }
     }, checkInterval);
 
     return () => clearInterval(interval);
-  }, [isAuthenticated, user, checkInterval]);
+  }, [isAuthenticated, user, checkInterval, portalUrl]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Redirect to portal
   const redirectToPortal = () => {
@@ -199,23 +212,4 @@ export function PortalGuard({
   );
 }
 
-/**
- * Hook to access portal user in sub-apps
- */
-export function usePortalUser(): PortalUser | null {
-  const [user, setUser] = useState<PortalUser | null>(null);
-
-  useEffect(() => {
-    const storedSession = sessionStorage.getItem('portal_session');
-    if (storedSession) {
-      try {
-        const session = JSON.parse(storedSession);
-        setUser(session.user);
-      } catch {
-        setUser(null);
-      }
-    }
-  }, []);
-
-  return user;
-}
+// Hook moved to separate file - import from src/hooks/usePortalUser

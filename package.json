@@ -3,8 +3,14 @@
   "private": true,
   "version": "0.0.0",
   "type": "module",
+  "engines": {
+    "node": "20.x"
+  },
   "scripts": {
     "dev": "vite --port 6001",
+    "dev:all": "concurrently \"npm run dev:api\" \"npm run dev:frontend\"",
+    "dev:api": "vercel dev --listen 3000",
+    "dev:frontend": "vite --port 6001",
     "build": "tsc -b && vite build",
     "vercel-build": "npm run build",
     "lint": "eslint .",
