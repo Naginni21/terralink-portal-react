@@ -44,9 +44,9 @@ services:
       - key: USE_REDIS_SESSIONS
         value: true
 
-      # CORS - Update with your Vercel URL
+      # CORS - Update with your Vercel URL (comma-separated)
       - key: ALLOWED_ORIGINS
-        value: '["https://terralink-portal.vercel.app","https://portal.terralink.cl"]'
+        value: 'https://terralink-portal.vercel.app,https://portal.terralink.cl'
 
       # Cookie Settings
       - key: COOKIE_NAME
@@ -62,11 +62,11 @@ services:
       - key: COOKIE_MAX_AGE
         value: 2592000
 
-      # Access Control
+      # Access Control (comma-separated)
       - key: ALLOWED_DOMAINS
-        value: '["terralink.cl","gmail.com"]'
+        value: 'terralink.cl,gmail.com'
       - key: ADMIN_EMAILS
-        value: '["felipe.silva@terralink.cl"]'
+        value: 'admin@terralink.cl'
 
       # Rate Limiting
       - key: RATE_LIMIT_ENABLED
