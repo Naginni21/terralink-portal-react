@@ -89,4 +89,4 @@ databases:
   - name: terralink-db
     databaseName: terralink_portal
     user: terralink
-    plan: starter # or 'standard' for production
+    plan: free # Free tier (limited resources) or 'basic' ($7/month)
