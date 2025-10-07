@@ -6,18 +6,25 @@ from typing import AsyncGenerator
 
 from ..core.config import settings
 
+# Convert postgres:// to postgresql+asyncpg:// for async support
+database_url = settings.DATABASE_URL
+if database_url.startswith("postgres://"):
+    database_url = database_url.replace("postgres://", "postgresql+asyncpg://", 1)
+elif database_url.startswith("postgresql://"):
+    database_url = database_url.replace("postgresql://", "postgresql+asyncpg://", 1)
+
 # Create async engine with different settings for SQLite
-if "sqlite" in settings.DATABASE_URL:
+if "sqlite" in database_url:
     # SQLite doesn't support pool settings
     engine = create_async_engine(
-        settings.DATABASE_URL,
+        database_url,
         echo=settings.DATABASE_ECHO,
         future=True,
     )
 else:
     # PostgreSQL with pool settings
     engine = create_async_engine(
-        settings.DATABASE_URL,
+        database_url,
         echo=settings.DATABASE_ECHO,
         future=True,
         pool_pre_ping=True,
