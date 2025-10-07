@@ -5,6 +5,7 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 from pydantic import Field, field_validator, HttpUrl
 import secrets
 from pathlib import Path
+import json
 
 
 class Settings(BaseSettings):
@@ -109,7 +110,6 @@ class Settings(BaseSettings):
             # Try to parse as JSON first
             if v.strip().startswith("["):
                 try:
-                    import json
                     parsed = json.loads(v)
                     if isinstance(parsed, list):
                         return parsed
@@ -133,7 +133,6 @@ class Settings(BaseSettings):
             # Try to parse as JSON first
             if v.strip().startswith("["):
                 try:
-                    import json
                     parsed = json.loads(v)
                     if isinstance(parsed, list):
                         return [d.lower() for d in parsed]
@@ -157,7 +156,6 @@ class Settings(BaseSettings):
             # Try to parse as JSON first
             if v.strip().startswith("["):
                 try:
-                    import json
                     parsed = json.loads(v)
                     if isinstance(parsed, list):
                         return [e.lower() for e in parsed]
