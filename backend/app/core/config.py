@@ -99,14 +99,23 @@ class Settings(BaseSettings):
     @field_validator("ALLOWED_ORIGINS", mode="before")
     @classmethod
     def parse_allowed_origins(cls, v: Any) -> List[str]:
-        """Parse comma-separated origins from environment variable."""
+        """Parse origins from environment variable (JSON array or comma-separated)."""
         if v is None:
             return ["http://localhost:6001", "http://localhost:3000"]
         if isinstance(v, str):
             # Handle empty string
             if not v.strip():
                 return ["http://localhost:6001", "http://localhost:3000"]
-            # Try to parse as comma-separated
+            # Try to parse as JSON first
+            if v.strip().startswith("["):
+                try:
+                    import json
+                    parsed = json.loads(v)
+                    if isinstance(parsed, list):
+                        return parsed
+                except (json.JSONDecodeError, ValueError):
+                    pass
+            # Fallback to comma-separated
             return [origin.strip() for origin in v.split(",") if origin.strip()]
         if isinstance(v, list):
             return v
@@ -115,29 +124,49 @@ class Settings(BaseSettings):
     @field_validator("ALLOWED_DOMAINS", mode="before")
     @classmethod
     def parse_allowed_domains(cls, v: Any) -> List[str]:
-        """Parse comma-separated domains from environment variable."""
+        """Parse domains from environment variable (JSON array or comma-separated)."""
         if v is None:
             return ["terralink.cl"]
         if isinstance(v, str):
             if not v.strip():
                 return ["terralink.cl"]
+            # Try to parse as JSON first
+            if v.strip().startswith("["):
+                try:
+                    import json
+                    parsed = json.loads(v)
+                    if isinstance(parsed, list):
+                        return [d.lower() for d in parsed]
+                except (json.JSONDecodeError, ValueError):
+                    pass
+            # Fallback to comma-separated
             return [domain.strip().lower() for domain in v.split(",") if domain.strip()]
         if isinstance(v, list):
-            return v
+            return [d.lower() for d in v]
         return ["terralink.cl"]
 
     @field_validator("ADMIN_EMAILS", mode="before")
     @classmethod
     def parse_admin_emails(cls, v: Any) -> List[str]:
-        """Parse comma-separated admin emails from environment variable."""
+        """Parse admin emails from environment variable (JSON array or comma-separated)."""
         if v is None:
             return ["admin@terralink.cl"]
         if isinstance(v, str):
             if not v.strip():
                 return ["admin@terralink.cl"]
+            # Try to parse as JSON first
+            if v.strip().startswith("["):
+                try:
+                    import json
+                    parsed = json.loads(v)
+                    if isinstance(parsed, list):
+                        return [e.lower() for e in parsed]
+                except (json.JSONDecodeError, ValueError):
+                    pass
+            # Fallback to comma-separated
             return [email.strip().lower() for email in v.split(",") if email.strip()]
         if isinstance(v, list):
-            return v
+            return [e.lower() for e in v]
         return ["admin@terralink.cl"]
 
     @property
