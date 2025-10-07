@@ -17,9 +17,16 @@ async def get_current_session(
     request: Request,
     db: AsyncSession = Depends(get_db)
 ) -> Session:
-    """Dependency to get current session from cookie."""
-    # Extract session cookie
-    session_id = request.cookies.get(settings.COOKIE_NAME)
+    """Dependency to get current session from cookie or Authorization header."""
+    # Try to get session from Authorization header first (for cross-domain)
+    auth_header = request.headers.get("Authorization")
+    session_id = None
+
+    if auth_header and auth_header.startswith("Bearer "):
+        session_id = auth_header.replace("Bearer ", "")
+    else:
+        # Fallback to cookie (for same-domain)
+        session_id = request.cookies.get(settings.COOKIE_NAME)
 
     if not session_id:
         raise HTTPException(

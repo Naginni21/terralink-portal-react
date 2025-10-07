@@ -66,22 +66,15 @@ async def google_callback(
             db, user, ip_address, user_agent
         )
 
-        # Create redirect response to frontend
+        # Create redirect response to frontend with token in URL
+        # For cross-domain compatibility, pass session_id as URL parameter
+        redirect_url = f"{settings.FRONTEND_URL}?token={session_id}"
         redirect_response = RedirectResponse(
-            url=settings.FRONTEND_URL,
+            url=redirect_url,
             status_code=status.HTTP_302_FOUND
         )
 
-        # Set session cookie
-        cookie_settings = settings.cookie_settings.copy()
-        cookie_settings.pop("key", None)  # Remove key from settings if present
-
-        redirect_response.set_cookie(
-            key=settings.COOKIE_NAME,
-            value=session_id,
-            **cookie_settings
-        )
-
+        logger.info(f"Redirecting to frontend with session token")
         return redirect_response
 
     except Exception as e:

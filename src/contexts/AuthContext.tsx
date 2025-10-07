@@ -8,15 +8,28 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [csrfToken, setCsrfToken] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
+  // Get token from localStorage
+  const getToken = () => localStorage.getItem('auth_token');
+  const setToken = (token: string) => localStorage.setItem('auth_token', token);
+  const clearToken = () => localStorage.removeItem('auth_token');
+
   // Validate session with backend
   const validateSession = useCallback(async (): Promise<boolean> => {
     try {
+      const token = getToken();
+      const headers: HeadersInit = {
+        'Content-Type': 'application/json',
+      };
+
+      // Add token to Authorization header if available
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+      }
+
       const response = await fetch('/api/auth/session', {
         method: 'GET',
-        credentials: 'include', // Include cookies
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        credentials: 'include', // Include cookies (fallback)
+        headers,
       });
 
       if (!response.ok) {
@@ -84,9 +97,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     } catch {
       // Logout error - continue with cleanup
     } finally {
-      // Clear state regardless of API response
+      // Clear state and token regardless of API response
       setUser(null);
       setCsrfToken(null);
+      clearToken();
     }
   }, [csrfToken]);
 
@@ -94,6 +108,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     const checkSession = async () => {
       try {
+        // Check if there's a token in the URL (from OAuth callback)
+        const urlParams = new URLSearchParams(window.location.search);
+        const tokenFromUrl = urlParams.get('token');
+
+        if (tokenFromUrl) {
+          // Store the token
+          setToken(tokenFromUrl);
+          // Clean up URL
+          window.history.replaceState({}, document.title, window.location.pathname);
+        }
         await validateSession();
       } catch {
         // Session check error
