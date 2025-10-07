@@ -1,3 +1,14 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+/* Center Google Sign-In Button */
+#googleSignInButton {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+#googleSignInButton > div {
+  margin: 0 auto;
+}

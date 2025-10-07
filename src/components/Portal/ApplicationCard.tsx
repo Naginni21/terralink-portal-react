@@ -14,31 +14,29 @@ export function ApplicationCard({ app, onAppClick }: ApplicationCardProps) {
   const IconComponent = Icons[app.iconName as keyof typeof Icons] as React.ComponentType<React.SVGProps<SVGSVGElement>>;
 
   const handleClick = async () => {
-    // Track the activity
-    const token = localStorage.getItem('auth_token');
-    if (token) {
-      try {
-        await fetch('/api/activity/track', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${token}`
-          },
-          body: JSON.stringify({
-            appId: app.id,
-            appName: app.name,
-            action: 'click',
-            metadata: {
-              category: app.category,
-              hasUrl: !!app.url
-            }
-          })
-        });
-      } catch {
-        // Activity tracking failed silently
-      }
+    // Track the activity using session cookies
+    try {
+      await fetch('/api/activity/track', {
+        method: 'POST',
+        credentials: 'include', // Include cookies
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          appId: app.id,
+          appName: app.name,
+          action: 'click',
+          metadata: {
+            category: app.category,
+            hasUrl: !!app.url
+          }
+        })
+      });
+    } catch (error) {
+      // Activity tracking failed silently
+      console.error('Failed to track activity:', error);
     }
-    
+
     // Call the original click handler
     onAppClick(app);
   };

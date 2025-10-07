@@ -92,16 +92,18 @@ export function SignIn() {
           auto_select: false,
           cancel_on_tap_outside: true,
           ux_mode: 'redirect',
-          login_uri: window.location.origin + '/api/auth/google-callback'
+          login_uri: import.meta.env.VITE_API_URL
+            ? `${import.meta.env.VITE_API_URL}/api/auth/google-callback`
+            : window.location.origin + '/api/auth/google-callback'
         });
 
         // Render the Google Sign-In button
         window.google.accounts.id.renderButton(
           document.getElementById('googleSignInButton'),
-          { 
+          {
             theme: 'outline',
             size: 'large',
-            width: 300,
+            width: 280,
             text: 'signin_with',
             shape: 'rectangular',
             logo_alignment: 'left'
@@ -150,7 +152,7 @@ export function SignIn() {
                 <span className="ml-3 text-gray-600 text-sm">Iniciando sesión...</span>
               </div>
             ) : (
-              <div id="googleSignInButton" className="w-full"></div>
+              <div id="googleSignInButton" className="w-full flex justify-center"></div>
             )}
           </div>
 
@@ -166,18 +168,6 @@ export function SignIn() {
               >
                 ¿Problemas para iniciar sesión? Click aquí para recargar
               </button>
-            </div>
-          )}
-
-          {/* Debug Links */}
-          {import.meta.env.DEV && (
-            <div className="mt-6 pt-6 border-t border-gray-100 space-y-2">
-              <a href="/oauth-info" className="block text-center text-xs text-green-600 hover:underline">
-                OAuth Configuration Info
-              </a>
-              <a href="/auth-test" className="block text-center text-xs text-red-600 hover:underline">
-                Run Authentication Tests
-              </a>
             </div>
           )}
 

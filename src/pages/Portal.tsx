@@ -8,7 +8,7 @@ import { APPLICATIONS_DATA } from '../lib/constants';
 // auth-api removed - using cookie-based authentication now
 
 export function Portal() {
-  const { user, logout } = useAuth();
+  const { user, logout, csrfToken } = useAuth();
   const navigate = useNavigate();
   const [viewMode, setViewMode] = useState<ViewMode>('list');
   const [accessLogs, setAccessLogs] = useState<AccessLog[]>([]);
@@ -49,11 +49,63 @@ export function Portal() {
     if (user) {
       logAccess('app_access', user.email, app.name);
     }
-    
+
     if (app.url) {
-      // Apps are now authenticated via session cookies (httpOnly)
-      // The browser automatically includes cookies with same-origin requests
-      window.open(app.url, '_blank');
+      try {
+        const appUrl = new URL(app.url);
+        const appHost = appUrl.hostname;
+        const appDomain = import.meta.env.VITE_APP_DOMAIN || 'terralink.cl';
+
+        // Determine if token exchange is needed
+        let needsTokenExchange = false;
+
+        if (appDomain === 'localhost') {
+          // In local development, all localhost ports share cookies
+          needsTokenExchange = appHost !== 'localhost';
+        } else {
+          // In production, check if it's a terralink.cl subdomain
+          // Cookies with domain=.terralink.cl work for all *.terralink.cl subdomains
+          needsTokenExchange = !appHost.endsWith('.terralink.cl') &&
+                               appHost !== 'terralink.cl';
+        }
+
+        if (needsTokenExchange) {
+          // Cross-domain app - need token exchange
+          console.log(`Cross-domain app detected: ${appHost} (not under ${appDomain})`);
+
+          // Request token from backend
+          const response = await fetch('/api/auth/app-token', {
+            method: 'POST',
+            credentials: 'include',
+            headers: {
+              'Content-Type': 'application/json',
+              ...(csrfToken && { 'X-CSRF-Token': csrfToken })
+            },
+            body: JSON.stringify({
+              appId: app.id,
+              appDomain: appHost
+            })
+          });
+
+          if (!response.ok) {
+            throw new Error(`Token exchange failed: ${response.status}`);
+          }
+
+          const { token } = await response.json();
+
+          // Open app with token in URL
+          const separator = app.url.includes('?') ? '&' : '?';
+          window.open(`${app.url}${separator}token=${encodeURIComponent(token)}`, '_blank');
+        } else {
+          // Same domain (terralink subdomain or localhost) - cookies will work
+          console.log(`Same-domain app: ${appHost} (under ${appDomain})`);
+          window.open(app.url, '_blank');
+        }
+      } catch (error) {
+        console.error('Error launching app:', error);
+        // Fallback to direct navigation
+        window.open(app.url, '_blank');
+      }
     } else {
       alert(`La aplicación "${app.name}" estará disponible próximamente`);
     }

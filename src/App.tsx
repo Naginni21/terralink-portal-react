@@ -7,8 +7,6 @@ import { ProtectedRoute } from './components/Auth/ProtectedRoute';
 const SignIn = lazy(() => import('./pages/SignIn').then(m => ({ default: m.SignIn })));
 const Portal = lazy(() => import('./pages/Portal').then(m => ({ default: m.Portal })));
 const Admin = lazy(() => import('./pages/Admin'));
-const AuthTest = lazy(() => import('./pages/AuthTest').then(m => ({ default: m.AuthTest })));
-const OAuthInfo = lazy(() => import('./pages/OAuthInfo').then(m => ({ default: m.OAuthInfo })));
 
 // Loading component for Suspense fallback
 function PageLoader() {
@@ -29,8 +27,6 @@ function App() {
         <Suspense fallback={<PageLoader />}>
           <Routes>
           <Route path="/signin" element={<SignIn />} />
-          <Route path="/auth-test" element={<AuthTest />} />
-          <Route path="/oauth-info" element={<OAuthInfo />} />
           <Route
             path="/"
             element={

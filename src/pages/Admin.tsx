@@ -30,7 +30,7 @@ interface Domain {
 }
 
 const Admin: React.FC = () => {
-  const { user, logout } = useAuth();
+  const { user, logout, csrfToken } = useAuth();
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState<'users' | 'activity' | 'domains'>('users');
   const [users, setUsers] = useState<User[]>([]);
@@ -48,159 +48,168 @@ const Admin: React.FC = () => {
 
   const loadData = useCallback(async () => {
     setLoading(true);
-    const token = localStorage.getItem('auth_token');
-    
+
+    // Common fetch configuration with cookies and CSRF token
+    const fetchConfig: RequestInit = {
+      credentials: 'include',
+      headers: {
+        'Content-Type': 'application/json',
+        ...(csrfToken ? { 'X-CSRF-Token': csrfToken } : {})
+      }
+    };
+
     try {
       if (activeTab === 'users') {
-        const response = await fetch('/api/admin/users', {
-          headers: {
-            'Authorization': `Bearer ${token}`
+        const response = await fetch('/api/admin/users', fetchConfig);
+        if (!response.ok) {
+          if (response.status === 401) {
+            navigate('/signin');
+            return;
           }
-        });
-        const data = await response.json();
-        if (response.ok) {
-          setUsers(data.users);
+          console.error('Failed to load users:', response.status);
+          return;
         }
-      } else if (activeTab === 'activity') {
-        const response = await fetch('/api/activity/track', {
-          headers: {
-            'Authorization': `Bearer ${token}`
-          }
-        });
         const data = await response.json();
+        setUsers(data.users || []);
+      } else if (activeTab === 'activity') {
+        const response = await fetch('/api/activity/track', fetchConfig);
         if (response.ok) {
-          setActivities(data.activities);
+          const data = await response.json();
+          setActivities(data.activities || []);
         }
       } else if (activeTab === 'domains') {
-        const response = await fetch('/api/admin/domains', {
-          headers: {
-            'Authorization': `Bearer ${token}`
-          }
-        });
-        const data = await response.json();
+        const response = await fetch('/api/admin/domains', fetchConfig);
         if (response.ok) {
-          setDomains(data.domains);
+          const data = await response.json();
+          setDomains(data.domains || []);
         }
       }
-    } catch {
-      // Error loading data
+    } catch (error) {
+      console.error('Error loading data:', error);
     }
-    
+
     setLoading(false);
-  }, [activeTab]);
+  }, [activeTab, csrfToken, navigate]);
 
   useEffect(() => {
     loadData();
   }, [loadData]);
 
   const updateUserRole = async (email: string, newRole: string) => {
-    const token = localStorage.getItem('auth_token');
-    
     try {
       const response = await fetch('/api/admin/users', {
         method: 'PUT',
+        credentials: 'include',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
+          ...(csrfToken ? { 'X-CSRF-Token': csrfToken } : {})
         },
         body: JSON.stringify({ email, role: newRole })
       });
-      
+
       if (response.ok) {
         loadData();
+      } else if (response.status === 401) {
+        navigate('/signin');
       }
-    } catch {
-      // Error updating user role
+    } catch (error) {
+      console.error('Error updating user role:', error);
     }
   };
 
   const revokeUserAccess = async (email: string) => {
     if (!confirm(`Are you sure you want to revoke access for ${email}?`)) return;
-    
-    const token = localStorage.getItem('auth_token');
-    
+
     try {
       const response = await fetch('/api/admin/users', {
         method: 'DELETE',
+        credentials: 'include',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
+          ...(csrfToken ? { 'X-CSRF-Token': csrfToken } : {})
         },
         body: JSON.stringify({ email })
       });
-      
+
       if (response.ok) {
         loadData();
+      } else if (response.status === 401) {
+        navigate('/signin');
       }
-    } catch {
-      // Error revoking access
+    } catch (error) {
+      console.error('Error revoking access:', error);
     }
   };
 
   const addDomain = async () => {
     if (!newDomain) return;
-    
-    const token = localStorage.getItem('auth_token');
-    
+
     try {
       const response = await fetch('/api/admin/domains', {
         method: 'POST',
+        credentials: 'include',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
+          ...(csrfToken ? { 'X-CSRF-Token': csrfToken } : {})
         },
         body: JSON.stringify({ domain: newDomain })
       });
-      
+
       if (response.ok) {
         setNewDomain('');
         loadData();
+      } else if (response.status === 401) {
+        navigate('/signin');
       }
-    } catch {
-      // Error adding domain
+    } catch (error) {
+      console.error('Error adding domain:', error);
     }
   };
 
   const removeDomain = async (domain: string) => {
     if (!confirm(`Are you sure you want to remove ${domain}?`)) return;
-    
-    const token = localStorage.getItem('auth_token');
-    
+
     try {
       const response = await fetch('/api/admin/domains', {
         method: 'DELETE',
+        credentials: 'include',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
+          ...(csrfToken ? { 'X-CSRF-Token': csrfToken } : {})
         },
         body: JSON.stringify({ domain })
       });
-      
+
       if (response.ok) {
         loadData();
+      } else if (response.status === 401) {
+        navigate('/signin');
       }
-    } catch {
-      // Error removing domain
+    } catch (error) {
+      console.error('Error removing domain:', error);
     }
   };
 
   const loadUserActivities = async (email: string) => {
     setSelectedUser(email);
-    const token = localStorage.getItem('auth_token');
-    
+
     try {
       const response = await fetch(`/api/activity/track?email=${email}`, {
+        credentials: 'include',
         headers: {
-          'Authorization': `Bearer ${token}`
+          ...(csrfToken ? { 'X-CSRF-Token': csrfToken } : {})
         }
       });
-      const data = await response.json();
+
       if (response.ok) {
-        setActivities(data.activities);
+        const data = await response.json();
+        setActivities(data.activities || []);
         setActiveTab('activity');
+      } else if (response.status === 401) {
+        navigate('/signin');
       }
-    } catch {
-      // Error loading user activities
+    } catch (error) {
+      console.error('Error loading user activities:', error);
     }
   };
 
@@ -367,7 +376,7 @@ const Admin: React.FC = () => {
                                 >
                                   View Activity
                                 </button>
-                                {user.email !== localStorage.getItem('user_email') && (
+                                {user.email !== user?.email && (
                                   <button
                                     onClick={() => revokeUserAccess(user.email)}
                                     className="text-red-600 hover:text-red-800 text-sm"
