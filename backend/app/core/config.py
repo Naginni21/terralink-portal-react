@@ -1,8 +1,8 @@
 """Application configuration using Pydantic Settings."""
 
-from typing import List, Optional, Dict, Any, Annotated
+from typing import List, Optional, Dict, Any
 from pydantic_settings import BaseSettings, SettingsConfigDict
-from pydantic import Field, field_validator, HttpUrl, BeforeValidator
+from pydantic import Field
 import secrets
 from pathlib import Path
 import json
@@ -39,6 +39,8 @@ class Settings(BaseSettings):
         extra="ignore",
         env_ignore_empty=True,
         env_nested_delimiter="__",
+        # Don't try to parse env vars as JSON - let our validators handle it
+        env_parse_enums=False,
     )
 
     # API Settings
@@ -79,10 +81,10 @@ class Settings(BaseSettings):
     )
     USE_REDIS_SESSIONS: bool = Field(default=False, description="Use Redis for sessions instead of DB")
 
-    # CORS Settings
-    ALLOWED_ORIGINS: Annotated[List[str], BeforeValidator(parse_list_from_env)] = Field(
-        default_factory=lambda: ["http://localhost:6001", "http://localhost:3000"],
-        description="Allowed CORS origins"
+    # CORS Settings (stored as strings, parsed via properties)
+    ALLOWED_ORIGINS: str = Field(
+        default="http://localhost:6001,http://localhost:3000",
+        description="Allowed CORS origins (comma-separated)"
     )
     ALLOW_CREDENTIALS: bool = Field(default=True, description="Allow credentials in CORS")
     ALLOWED_METHODS: List[str] = Field(default_factory=lambda: ["*"], description="Allowed HTTP methods")
@@ -96,14 +98,14 @@ class Settings(BaseSettings):
     COOKIE_SAMESITE: str = Field(default="lax", description="SameSite cookie attribute")
     COOKIE_MAX_AGE: int = Field(default=60 * 60 * 24 * 30, description="Cookie max age in seconds (30 days)")
 
-    # Access Control
-    ALLOWED_DOMAINS: Annotated[List[str], BeforeValidator(parse_list_from_env)] = Field(
-        default_factory=lambda: ["terralink.cl"],
-        description="Allowed email domains for login"
+    # Access Control (stored as strings, parsed via properties)
+    ALLOWED_DOMAINS: str = Field(
+        default="terralink.cl",
+        description="Allowed email domains for login (comma-separated)"
     )
-    ADMIN_EMAILS: Annotated[List[str], BeforeValidator(parse_list_from_env)] = Field(
-        default_factory=lambda: ["admin@terralink.cl"],
-        description="Admin user emails"
+    ADMIN_EMAILS: str = Field(
+        default="admin@terralink.cl",
+        description="Admin user emails (comma-separated)"
     )
 
     # Rate Limiting
@@ -126,9 +128,17 @@ class Settings(BaseSettings):
     @property
     def cors_origins(self) -> List[str]:
         """Get CORS origins as list."""
-        if isinstance(self.ALLOWED_ORIGINS, str):
-            return [origin.strip() for origin in self.ALLOWED_ORIGINS.split(",") if origin.strip()]
-        return self.ALLOWED_ORIGINS
+        return parse_list_from_env(self.ALLOWED_ORIGINS)
+
+    @property
+    def allowed_domains(self) -> List[str]:
+        """Get allowed domains as list."""
+        return parse_list_from_env(self.ALLOWED_DOMAINS)
+
+    @property
+    def admin_emails(self) -> List[str]:
+        """Get admin emails as list."""
+        return parse_list_from_env(self.ADMIN_EMAILS)
 
     @property
     def is_production(self) -> bool:
@@ -149,14 +159,14 @@ class Settings(BaseSettings):
 
     def is_admin(self, email: str) -> bool:
         """Check if an email belongs to an admin user."""
-        return email.lower() in [e.lower() for e in self.ADMIN_EMAILS]
+        return email.lower() in [e.lower() for e in self.admin_emails]
 
     def is_domain_allowed(self, email: str) -> bool:
         """Check if an email domain is allowed."""
         if "@" not in email:
             return False
         domain = email.split("@")[1].lower()
-        return domain in [d.lower() for d in self.ALLOWED_DOMAINS]
+        return domain in [d.lower() for d in self.allowed_domains]
 
 
 # Create a single settings instance
