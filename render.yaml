@@ -35,14 +35,14 @@ services:
           name: terralink-db
           property: connectionString
 
-      # Redis - Automatically connected
-      - key: REDIS_URL
-        fromService:
-          name: terralink-redis
-          type: redis
-          property: connectionString
+      # Redis - Disabled for now (using PostgreSQL for sessions)
+      # - key: REDIS_URL
+      #   fromService:
+      #     name: terralink-redis
+      #     type: redis
+      #     property: connectionString
       - key: USE_REDIS_SESSIONS
-        value: true
+        value: false
 
       # CORS - Update with your Vercel URL (comma-separated)
       - key: ALLOWED_ORIGINS
@@ -83,13 +83,6 @@ services:
       # Logging
       - key: LOG_LEVEL
         value: INFO
-
-  # Redis Instance for sessions
-  - type: redis
-    name: terralink-redis
-    plan: starter # or 'standard' for production
-    maxmemoryPolicy: allkeys-lru
-    ipAllowList: [] # Empty list allows connections from Render services only
 
 # PostgreSQL Database
 databases:
