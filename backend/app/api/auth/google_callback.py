@@ -26,12 +26,18 @@ async def google_callback(
 
     This endpoint receives the credential from Google Sign-In redirect flow.
     """
+    import logging
+    logger = logging.getLogger(__name__)
+
     try:
         # Verify Google token
+        logger.info(f"Received OAuth callback, verifying token...")
         user_info = await AuthService.verify_google_token(credential)
+        logger.info(f"Token verified for user: {user_info.get('email')}")
 
         # Check email verification
         if not user_info.get("email_verified"):
+            logger.warning(f"Email not verified: {user_info.get('email')}")
             return RedirectResponse(
                 url=f"{settings.FRONTEND_URL}/signin?error=email_not_verified",
                 status_code=status.HTTP_302_FOUND
@@ -40,10 +46,13 @@ async def google_callback(
         # Check allowed domains
         email = user_info["email"].lower()
         if not settings.is_domain_allowed(email):
+            logger.warning(f"Domain not allowed: {email}")
             return RedirectResponse(
                 url=f"{settings.FRONTEND_URL}/signin?error=domain_not_allowed",
                 status_code=status.HTTP_302_FOUND
             )
+
+        logger.info(f"Creating/updating user for: {email}")
 
         # Create or update user
         user = await AuthService.create_or_update_user(db, user_info)
@@ -77,8 +86,7 @@ async def google_callback(
 
     except Exception as e:
         # Log the error for debugging
-        import logging
-        logging.error(f"Google callback error: {e}")
+        logger.error(f"Google callback error: {e}", exc_info=True)
 
         # Redirect with error
         return RedirectResponse(
