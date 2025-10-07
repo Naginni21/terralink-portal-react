@@ -1,11 +1,32 @@
 """Application configuration using Pydantic Settings."""
 
-from typing import List, Optional, Dict, Any
+from typing import List, Optional, Dict, Any, Annotated
 from pydantic_settings import BaseSettings, SettingsConfigDict
-from pydantic import Field, field_validator, HttpUrl
+from pydantic import Field, field_validator, HttpUrl, BeforeValidator
 import secrets
 from pathlib import Path
 import json
+
+
+def parse_list_from_env(v: Any) -> List[str]:
+    """Parse list from environment variable - handles JSON arrays or comma-separated strings."""
+    if v is None or (isinstance(v, str) and not v.strip()):
+        return []
+    if isinstance(v, list):
+        return v
+    if isinstance(v, str):
+        v = v.strip()
+        # Try JSON parsing first
+        if v.startswith("["):
+            try:
+                parsed = json.loads(v)
+                if isinstance(parsed, list):
+                    return parsed
+            except (json.JSONDecodeError, ValueError):
+                pass
+        # Fallback to comma-separated
+        return [item.strip() for item in v.split(",") if item.strip()]
+    return []
 
 
 class Settings(BaseSettings):
@@ -59,7 +80,7 @@ class Settings(BaseSettings):
     USE_REDIS_SESSIONS: bool = Field(default=False, description="Use Redis for sessions instead of DB")
 
     # CORS Settings
-    ALLOWED_ORIGINS: List[str] = Field(
+    ALLOWED_ORIGINS: Annotated[List[str], BeforeValidator(parse_list_from_env)] = Field(
         default_factory=lambda: ["http://localhost:6001", "http://localhost:3000"],
         description="Allowed CORS origins"
     )
@@ -76,11 +97,11 @@ class Settings(BaseSettings):
     COOKIE_MAX_AGE: int = Field(default=60 * 60 * 24 * 30, description="Cookie max age in seconds (30 days)")
 
     # Access Control
-    ALLOWED_DOMAINS: List[str] = Field(
+    ALLOWED_DOMAINS: Annotated[List[str], BeforeValidator(parse_list_from_env)] = Field(
         default_factory=lambda: ["terralink.cl"],
         description="Allowed email domains for login"
     )
-    ADMIN_EMAILS: List[str] = Field(
+    ADMIN_EMAILS: Annotated[List[str], BeforeValidator(parse_list_from_env)] = Field(
         default_factory=lambda: ["admin@terralink.cl"],
         description="Admin user emails"
     )
@@ -96,83 +117,6 @@ class Settings(BaseSettings):
         default="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
         description="Log format"
     )
-
-    @field_validator("ALLOWED_ORIGINS", mode="before")
-    @classmethod
-    def parse_allowed_origins(cls, v: Any) -> List[str]:
-        """Parse origins from environment variable (JSON array or comma-separated)."""
-        try:
-            if v is None:
-                return ["http://localhost:6001", "http://localhost:3000"]
-            if isinstance(v, str):
-                # Handle empty string
-                if not v.strip():
-                    return ["http://localhost:6001", "http://localhost:3000"]
-                # Try to parse as JSON first
-                if v.strip().startswith("["):
-                    try:
-                        parsed = json.loads(v)
-                        if isinstance(parsed, list):
-                            return parsed
-                    except (json.JSONDecodeError, ValueError) as e:
-                        print(f"Warning: Failed to parse ALLOWED_ORIGINS as JSON: {e}")
-                        print(f"Value was: {repr(v)}")
-                # Fallback to comma-separated
-                return [origin.strip() for origin in v.split(",") if origin.strip()]
-            if isinstance(v, list):
-                return v
-            return ["http://localhost:6001", "http://localhost:3000"]
-        except Exception as e:
-            print(f"Error in parse_allowed_origins: {e}")
-            print(f"Value: {repr(v)}, Type: {type(v)}")
-            # Return default on any error
-            return ["http://localhost:6001", "http://localhost:3000"]
-
-    @field_validator("ALLOWED_DOMAINS", mode="before")
-    @classmethod
-    def parse_allowed_domains(cls, v: Any) -> List[str]:
-        """Parse domains from environment variable (JSON array or comma-separated)."""
-        if v is None:
-            return ["terralink.cl"]
-        if isinstance(v, str):
-            if not v.strip():
-                return ["terralink.cl"]
-            # Try to parse as JSON first
-            if v.strip().startswith("["):
-                try:
-                    parsed = json.loads(v)
-                    if isinstance(parsed, list):
-                        return [d.lower() for d in parsed]
-                except (json.JSONDecodeError, ValueError):
-                    pass
-            # Fallback to comma-separated
-            return [domain.strip().lower() for domain in v.split(",") if domain.strip()]
-        if isinstance(v, list):
-            return [d.lower() for d in v]
-        return ["terralink.cl"]
-
-    @field_validator("ADMIN_EMAILS", mode="before")
-    @classmethod
-    def parse_admin_emails(cls, v: Any) -> List[str]:
-        """Parse admin emails from environment variable (JSON array or comma-separated)."""
-        if v is None:
-            return ["admin@terralink.cl"]
-        if isinstance(v, str):
-            if not v.strip():
-                return ["admin@terralink.cl"]
-            # Try to parse as JSON first
-            if v.strip().startswith("["):
-                try:
-                    parsed = json.loads(v)
-                    if isinstance(parsed, list):
-                        return [e.lower() for e in parsed]
-                except (json.JSONDecodeError, ValueError):
-                    pass
-            # Fallback to comma-separated
-            return [email.strip().lower() for email in v.split(",") if email.strip()]
-        if isinstance(v, list):
-            return [e.lower() for e in v]
-        return ["admin@terralink.cl"]
 
     @property
     def jwt_secret_key(self) -> str:
