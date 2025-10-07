@@ -28,4 +28,6 @@ dist-ssr
 .env.production
 .env.vercel
 .env
+.env.render
+.env.vercel
 !.env.example
