@@ -89,6 +89,7 @@ services:
     name: terralink-redis
     plan: starter # or 'standard' for production
     maxmemoryPolicy: allkeys-lru
+    ipAllowList: [] # Empty list allows connections from Render services only
 
 # PostgreSQL Database
 databases:
