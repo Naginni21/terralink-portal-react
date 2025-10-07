@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import type { ReactNode } from 'react';
 import type { User } from '../types/index';
 import { AuthContext, type AuthContextType } from './AuthContextDefinition';
+import { getApiUrl } from '../lib/api';
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
@@ -26,7 +27,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         headers['Authorization'] = `Bearer ${token}`;
       }
 
-      const response = await fetch('/api/auth/session', {
+      const response = await fetch(getApiUrl('/api/auth/session'), {
         method: 'GET',
         credentials: 'include', // Include cookies (fallback)
         headers,
@@ -65,7 +66,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   // Login with Google credential
   const login = useCallback(async (credential: string) => {
-    const response = await fetch('/api/auth/google-signin', {
+    const response = await fetch(getApiUrl('/api/auth/google-signin'), {
       method: 'POST',
       credentials: 'include', // Include cookies
       headers: {
@@ -92,7 +93,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // Logout
   const logout = useCallback(async () => {
     try {
-      await fetch('/api/auth/logout', {
+      await fetch(getApiUrl('/api/auth/logout'), {
         method: 'POST',
         credentials: 'include',
         headers: {
