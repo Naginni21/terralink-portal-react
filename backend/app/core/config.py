@@ -101,25 +101,32 @@ class Settings(BaseSettings):
     @classmethod
     def parse_allowed_origins(cls, v: Any) -> List[str]:
         """Parse origins from environment variable (JSON array or comma-separated)."""
-        if v is None:
-            return ["http://localhost:6001", "http://localhost:3000"]
-        if isinstance(v, str):
-            # Handle empty string
-            if not v.strip():
+        try:
+            if v is None:
                 return ["http://localhost:6001", "http://localhost:3000"]
-            # Try to parse as JSON first
-            if v.strip().startswith("["):
-                try:
-                    parsed = json.loads(v)
-                    if isinstance(parsed, list):
-                        return parsed
-                except (json.JSONDecodeError, ValueError):
-                    pass
-            # Fallback to comma-separated
-            return [origin.strip() for origin in v.split(",") if origin.strip()]
-        if isinstance(v, list):
-            return v
-        return ["http://localhost:6001", "http://localhost:3000"]
+            if isinstance(v, str):
+                # Handle empty string
+                if not v.strip():
+                    return ["http://localhost:6001", "http://localhost:3000"]
+                # Try to parse as JSON first
+                if v.strip().startswith("["):
+                    try:
+                        parsed = json.loads(v)
+                        if isinstance(parsed, list):
+                            return parsed
+                    except (json.JSONDecodeError, ValueError) as e:
+                        print(f"Warning: Failed to parse ALLOWED_ORIGINS as JSON: {e}")
+                        print(f"Value was: {repr(v)}")
+                # Fallback to comma-separated
+                return [origin.strip() for origin in v.split(",") if origin.strip()]
+            if isinstance(v, list):
+                return v
+            return ["http://localhost:6001", "http://localhost:3000"]
+        except Exception as e:
+            print(f"Error in parse_allowed_origins: {e}")
+            print(f"Value: {repr(v)}, Type: {type(v)}")
+            # Return default on any error
+            return ["http://localhost:6001", "http://localhost:3000"]
 
     @field_validator("ALLOWED_DOMAINS", mode="before")
     @classmethod
