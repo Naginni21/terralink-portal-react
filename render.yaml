@@ -48,6 +48,10 @@ services:
       - key: ALLOWED_ORIGINS
         value: 'https://terralink-portal.vercel.app,https://portal.terralink.cl'
 
+      # Frontend URL for OAuth redirects
+      - key: FRONTEND_URL
+        value: 'https://terralink-portal.vercel.app'
+
       # Cookie Settings
       - key: COOKIE_NAME
         value: terralink_session

@@ -108,6 +108,12 @@ class Settings(BaseSettings):
         description="Admin user emails (comma-separated)"
     )
 
+    # Frontend URL for redirects
+    FRONTEND_URL: str = Field(
+        default="http://localhost:6001",
+        description="Frontend URL for OAuth redirects"
+    )
+
     # Rate Limiting
     RATE_LIMIT_ENABLED: bool = Field(default=True, description="Enable rate limiting")
     RATE_LIMIT_REQUESTS: int = Field(default=100, description="Requests per window")

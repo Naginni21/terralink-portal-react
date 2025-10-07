@@ -33,7 +33,7 @@ async def google_callback(
         # Check email verification
         if not user_info.get("email_verified"):
             return RedirectResponse(
-                url="http://localhost:6001/signin?error=email_not_verified",
+                url=f"{settings.FRONTEND_URL}/signin?error=email_not_verified",
                 status_code=status.HTTP_302_FOUND
             )
 
@@ -41,7 +41,7 @@ async def google_callback(
         email = user_info["email"].lower()
         if not settings.is_domain_allowed(email):
             return RedirectResponse(
-                url="http://localhost:6001/signin?error=domain_not_allowed",
+                url=f"{settings.FRONTEND_URL}/signin?error=domain_not_allowed",
                 status_code=status.HTTP_302_FOUND
             )
 
@@ -58,9 +58,8 @@ async def google_callback(
         )
 
         # Create redirect response to frontend
-        frontend_url = "http://localhost:6001"  # Frontend URL
         redirect_response = RedirectResponse(
-            url=frontend_url,
+            url=settings.FRONTEND_URL,
             status_code=status.HTTP_302_FOUND
         )
 
@@ -83,6 +82,6 @@ async def google_callback(
 
         # Redirect with error
         return RedirectResponse(
-            url="http://localhost:6001/signin?error=authentication_failed",
+            url=f"{settings.FRONTEND_URL}/signin?error=authentication_failed",
             status_code=status.HTTP_302_FOUND
         )
