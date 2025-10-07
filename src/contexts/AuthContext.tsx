@@ -32,15 +32,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         headers,
       });
 
+      console.log('[Auth] Session response status:', response.status);
+
       if (!response.ok) {
+        console.log('[Auth] Session validation failed');
         setUser(null);
         setCsrfToken(null);
+        clearToken();
         return false;
       }
 
       const data = await response.json();
-      
+      console.log('[Auth] Session data:', data);
+
       if (data.authenticated && data.user) {
+        console.log('[Auth] Session valid, user:', data.user.email);
         setUser(data.user);
         setCsrfToken(data.csrfToken);
         return true;
@@ -113,11 +119,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         const tokenFromUrl = urlParams.get('token');
 
         if (tokenFromUrl) {
+          console.log('[Auth] Token received from URL, storing...');
           // Store the token
           setToken(tokenFromUrl);
           // Clean up URL
           window.history.replaceState({}, document.title, window.location.pathname);
         }
+
+        const hasToken = getToken();
+        console.log('[Auth] Validating session, has token:', !!hasToken);
         await validateSession();
       } catch {
         // Session check error
