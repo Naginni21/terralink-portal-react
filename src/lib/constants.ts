@@ -31,7 +31,9 @@ export const APPLICATIONS_DATA: Application[] = [
     name: 'BESS Dimension',
     description: 'Dimensionamiento de sistemas de almacenamiento de energía',
     iconName: 'Activity',
-    url: getAppUrl('bess', 6002),
+    url: import.meta.env.PROD
+      ? 'https://bess-optimization-app.vercel.app'
+      : 'http://localhost:6002',
     color: 'bg-blue-500',
     roles: ['admin', 'operaciones', 'usuario'] as UserRole[],
     category: 'Ingeniería'
