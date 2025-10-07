@@ -52,17 +52,16 @@ services:
       - key: FRONTEND_URL
         value: 'https://terralink-portal.vercel.app'
 
-      # Cookie Settings
+      # Cookie Settings (for cross-domain authentication)
       - key: COOKIE_NAME
         value: terralink_session
-      - key: COOKIE_DOMAIN
-        sync: false  # Set in dashboard based on your domain
+      # COOKIE_DOMAIN not set - allows cross-domain cookies
       - key: COOKIE_SECURE
         value: true
       - key: COOKIE_HTTPONLY
         value: true
       - key: COOKIE_SAMESITE
-        value: lax
+        value: none  # Required for cross-domain cookies
       - key: COOKIE_MAX_AGE
         value: 2592000
 
