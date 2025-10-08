@@ -69,7 +69,7 @@ services:
       - key: ALLOWED_DOMAINS
         value: 'terralink.cl,gmail.com'
       - key: ADMIN_EMAILS
-        value: 'admin@terralink.cl'
+        value: 'felipe.silva@terralink.cl'
 
       # Rate Limiting
       - key: RATE_LIMIT_ENABLED
