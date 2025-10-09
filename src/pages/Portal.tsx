@@ -5,6 +5,7 @@ import { Navbar } from '../components/Layout/Navbar';
 import { ListView } from '../components/Portal/ListView';
 import type { ViewMode, AccessLog, Application } from '../types/index';
 import { APPLICATIONS_DATA } from '../lib/constants';
+import { getApiUrl } from '../lib/api';
 // auth-api removed - using cookie-based authentication now
 
 export function Portal() {
@@ -74,7 +75,7 @@ export function Portal() {
           console.log(`Cross-domain app detected: ${appHost} (not under ${appDomain})`);
 
           // Request token from backend
-          const response = await fetch('/api/auth/app-token', {
+          const response = await fetch(getApiUrl('/api/auth/app-token'), {
             method: 'POST',
             credentials: 'include',
             headers: {
