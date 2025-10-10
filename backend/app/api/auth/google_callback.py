@@ -74,7 +74,25 @@ async def google_callback(
             status_code=status.HTTP_302_FOUND
         )
 
-        logger.info(f"Redirecting to frontend with session token")
+        # ALSO set the session cookie for same-domain cookie sharing
+        # This allows apps on *.terralink.cl subdomains to access the session
+        cookie_kwargs = {
+            "key": settings.COOKIE_NAME,
+            "value": session_id,
+            "max_age": settings.COOKIE_MAX_AGE,
+            "httponly": settings.COOKIE_HTTPONLY,
+            "secure": settings.COOKIE_SECURE,
+            "samesite": settings.COOKIE_SAMESITE,
+        }
+
+        # Add domain if configured (for subdomain sharing)
+        if settings.COOKIE_DOMAIN:
+            cookie_kwargs["domain"] = settings.COOKIE_DOMAIN
+            logger.info(f"Setting cookie with domain: {settings.COOKIE_DOMAIN}")
+
+        redirect_response.set_cookie(**cookie_kwargs)
+
+        logger.info(f"Redirecting to frontend with session token and cookie")
         return redirect_response
 
     except Exception as e:
