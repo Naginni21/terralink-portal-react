@@ -89,9 +89,12 @@ async def google_callback(
         if settings.COOKIE_DOMAIN:
             cookie_kwargs["domain"] = settings.COOKIE_DOMAIN
             logger.info(f"Setting cookie with domain: {settings.COOKIE_DOMAIN}")
+        else:
+            logger.warning("COOKIE_DOMAIN not set - cookie will not be shared across subdomains!")
 
         redirect_response.set_cookie(**cookie_kwargs)
 
+        logger.info(f"Cookie settings: name={cookie_kwargs['key']}, domain={cookie_kwargs.get('domain', 'NOT SET')}, secure={cookie_kwargs['secure']}, httponly={cookie_kwargs['httponly']}, samesite={cookie_kwargs['samesite']}")
         logger.info(f"Redirecting to frontend with session token and cookie")
         return redirect_response
 
