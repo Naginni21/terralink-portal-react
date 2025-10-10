@@ -52,16 +52,17 @@ services:
       - key: FRONTEND_URL
         value: 'https://apps.terralink.cl'
 
-      # Cookie Settings (for cross-domain authentication)
+      # Cookie Settings (shared across all *.terralink.cl subdomains)
       - key: COOKIE_NAME
         value: terralink_session
-      # COOKIE_DOMAIN not set - allows cross-domain cookies
+      - key: COOKIE_DOMAIN
+        value: .terralink.cl  # Dot prefix shares cookie across all subdomains
       - key: COOKIE_SECURE
         value: true
       - key: COOKIE_HTTPONLY
         value: true
       - key: COOKIE_SAMESITE
-        value: none  # Required for cross-domain cookies
+        value: lax  # Changed from 'none' since we're using same parent domain
       - key: COOKIE_MAX_AGE
         value: 2592000
 
