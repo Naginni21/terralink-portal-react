@@ -46,7 +46,7 @@ services:
 
       # CORS - Update with your custom domain (comma-separated)
       - key: ALLOWED_ORIGINS
-        value: 'https://apps.terralink.cl,https://terralink-portal.vercel.app'
+        value: 'https://apps.terralink.cl,https://bess.app.terralink.cl,https://terralink-portal.vercel.app'
 
       # Frontend URL for OAuth redirects
       - key: FRONTEND_URL
