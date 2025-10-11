@@ -123,6 +123,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           console.log('[Auth] Token received from URL, storing...');
           // Store the token
           setToken(tokenFromUrl);
+
+          // IMPORTANT: Also set the session cookie with domain .terralink.cl
+          // This allows cookie sharing across all terralink.cl subdomains
+          // The backend can't set this cookie because it's served from onrender.com
+          const appDomain = import.meta.env.VITE_APP_DOMAIN || 'terralink.cl';
+          const cookieDomain = appDomain === 'localhost' ? 'localhost' : `.${appDomain}`;
+
+          // Set cookie with 30 days expiration (matching backend COOKIE_MAX_AGE)
+          const maxAge = 30 * 24 * 60 * 60; // 30 days in seconds
+          const expires = new Date(Date.now() + maxAge * 1000).toUTCString();
+
+          document.cookie = `terralink_session=${tokenFromUrl}; domain=${cookieDomain}; path=/; expires=${expires}; secure; samesite=lax`;
+
+          console.log(`[Auth] Session cookie set with domain: ${cookieDomain}`);
+
           // Clean up URL
           window.history.replaceState({}, document.title, window.location.pathname);
         }
